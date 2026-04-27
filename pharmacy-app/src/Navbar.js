@@ -6,6 +6,7 @@ import Cart from "./Cart";
 import Auth from "./Auth";
 import PrescriptionUpload from "./PrescriptionUpload";
 import AdminDashboard from "./AdminDashboard";
+import MyOrders from "./MyOrders";
 
 function Navbar() {
   const { cart } = useCart();
@@ -16,6 +17,7 @@ function Navbar() {
     
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
     const [adminOpen, setAdminOpen] = useState(false);
+  const [ordersOpen, setOrdersOpen] = useState(false);
 
   auth.onAuthStateChanged((currentUser) => {
     setUser(currentUser);
@@ -30,10 +32,10 @@ function Navbar() {
       <nav style={styles.navbar}>
         <h2 style={styles.logo}>💊 Sardar Pharmacy</h2>
         <div style={styles.links}>
-          <button style={styles.navLink}>Home</button>
-          <button style={styles.navLink}>Medicines</button>
-          <button style={styles.navLink}>Orders</button>
-          <button style={styles.navLink}>Contact</button>
+          <button style={styles.navLink} onClick={() => document.getElementById("home").scrollIntoView({ behavior: "smooth" })}>Home</button>
+          <button style={styles.navLink} onClick={() => document.getElementById("medicines").scrollIntoView({ behavior: "smooth" })}>Medicines</button>
+          <button style={styles.navLink} onClick={() => setOrdersOpen(true)}>Orders</button>
+          <button style={styles.navLink} onClick={() => document.getElementById("contact").scrollIntoView({ behavior: "smooth" })}>Contact</button>
 
           {user ? (
             <>
@@ -74,6 +76,7 @@ function Navbar() {
       {authOpen && <Auth onClose={() => setAuthOpen(false)} />}
         {prescriptionOpen && <PrescriptionUpload onClose={() => setPrescriptionOpen(false)} />}
         {adminOpen && <AdminDashboard onClose={() => setAdminOpen(false)} />}
+      {ordersOpen && <MyOrders onClose={() => setOrdersOpen(false)} />}
     </>
   );
 }
