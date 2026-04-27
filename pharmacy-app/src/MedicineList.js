@@ -72,7 +72,7 @@ function MedicineList() {
 
 const styles = {
   container: {
-    padding: "40px 30px",
+    padding: "40px 16px",
     backgroundColor: "#f8fafc",
   },
   heading: {
