@@ -30,10 +30,10 @@ function Navbar() {
       <nav style={styles.navbar}>
         <h2 style={styles.logo}>💊 Sardar Pharmacy</h2>
         <div style={styles.links}>
-          <a href="#" style={styles.link}>Home</a>
-          <a href="#" style={styles.link}>Medicines</a>
-          <a href="#" style={styles.link}>Orders</a>
-          <a href="#" style={styles.link}>Contact</a>
+          <button style={styles.navLink}>Home</button>
+          <button style={styles.navLink}>Medicines</button>
+          <button style={styles.navLink}>Orders</button>
+          <button style={styles.navLink}>Contact</button>
 
           {user ? (
             <>
@@ -153,6 +153,13 @@ const styles = {
   fontSize: "15px",
   cursor: "pointer",
   fontWeight: "bold",
+},
+navLink: {
+  color: "white",
+  background: "none",
+  border: "none",
+  fontSize: "16px",
+  cursor: "pointer",
 },
 };
 

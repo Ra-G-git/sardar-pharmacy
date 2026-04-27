@@ -17,7 +17,7 @@ useEffect(() => {
     if (user && user.email === ADMIN_EMAIL) {
       fetchData();
     }
-  }, []);
+  }, [user]);
 
   if (!user || user.email !== ADMIN_EMAIL) {
     return (
