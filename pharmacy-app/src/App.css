@@ -8,35 +8,25 @@ body {
   overflow-x: hidden;
 }
 
-.desktop-links {
+.desktop-bar {
   display: flex;
   gap: 12px;
   align-items: center;
+  background-color: #1d4ed8;
+  padding: 10px 20px;
+  flex-wrap: wrap;
 }
 
 .hamburger {
-  display: none;
-  background: none;
-  border: none;
-  color: white;
-  font-size: 28px;
-  cursor: pointer;
-}
-
-.mobile-menu {
-  display: flex;
-  flex-direction: column;
-  background-color: #1e40af;
-  padding: 10px 0;
-  z-index: 99;
+  display: none !important;
 }
 
 @media (max-width: 768px) {
-  .desktop-links {
-    display: none;
+  .desktop-bar {
+    display: none !important;
   }
 
   .hamburger {
-    display: block;
+    display: block !important;
   }
 }
