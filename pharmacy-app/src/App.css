@@ -8,25 +8,12 @@ body {
   overflow-x: hidden;
 }
 
-.desktop-bar {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  background-color: #1d4ed8;
-  padding: 10px 20px;
-  flex-wrap: wrap;
-}
-
-.hamburger {
-  display: none !important;
-}
-
+/* Show hamburger, hide desktop bar on mobile */
 @media (max-width: 768px) {
-  .desktop-bar {
-    display: none !important;
-  }
-
   .hamburger {
     display: block !important;
+  }
+  .desktop-bar {
+    display: none !important;
   }
 }

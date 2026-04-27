@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCart } from "./CartContext";
 import { auth } from "./firebase";
 import { signOut } from "firebase/auth";
@@ -20,12 +20,20 @@ function Navbar() {
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  auth.onAuthStateChanged((currentUser) => {
-    setUser(currentUser);
-  });
+  useEffect(() => {
+    const unsub = auth.onAuthStateChanged((currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsub();
+  }, []);
 
   async function handleLogout() {
     await signOut(auth);
+    setMenuOpen(false);
+  }
+
+  function close() {
+    setMenuOpen(false);
   }
 
   return (
@@ -33,59 +41,58 @@ function Navbar() {
       <nav style={styles.navbar}>
         <h2 style={styles.logo}>💊 Sardar Pharmacy</h2>
 
-        {/* Hamburger button for mobile */}
-        <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
+        <button className="hamburger" style={styles.hamburger} onClick={() => setMenuOpen(!menuOpen)}>
           {menuOpen ? "✕" : "☰"}
         </button>
-
-        {/* Desktop links */}
-        <div className="desktop-links">
-          <button style={styles.navLink} onClick={() => document.getElementById("home").scrollIntoView({ behavior: "smooth" })}>Home</button>
-          <button style={styles.navLink} onClick={() => document.getElementById("medicines").scrollIntoView({ behavior: "smooth" })}>Medicines</button>
-          <button style={styles.navLink} onClick={() => setOrdersOpen(true)}>Orders</button>
-          <button style={styles.navLink} onClick={() => document.getElementById("contact").scrollIntoView({ behavior: "smooth" })}>Contact</button>
-          <button style={styles.prescriptionBtn} onClick={() => setPrescriptionOpen(true)}>📋 Prescription</button>
-          {user && user.email === "razeesardar@gmail.com" && (
-            <button onClick={() => setAdminOpen(true)} style={styles.adminBtn}>🔧 Admin</button>
-          )}
-          {user ? (
-            <>
-              <span style={styles.userEmail}>👤 {user.email}</span>
-              <button onClick={handleLogout} style={styles.logoutBtn}>Logout</button>
-            </>
-          ) : (
-            <button onClick={() => setAuthOpen(true)} style={styles.loginBtn}>Login / Register</button>
-          )}
-          <button onClick={() => setCartOpen(true)} style={styles.cartBtn}>
-            🛒 {totalItems > 0 && <span style={styles.badge}>{totalItems}</span>}
-          </button>
-        </div>
       </nav>
 
-      {/* Mobile menu */}
+      {/* Mobile Dropdown Menu */}
       {menuOpen && (
-        <div className="mobile-menu">
-          <button style={styles.mobileLink} onClick={() => { document.getElementById("home").scrollIntoView({ behavior: "smooth" }); setMenuOpen(false); }}>🏠 Home</button>
-          <button style={styles.mobileLink} onClick={() => { document.getElementById("medicines").scrollIntoView({ behavior: "smooth" }); setMenuOpen(false); }}>💊 Medicines</button>
-          <button style={styles.mobileLink} onClick={() => { setOrdersOpen(true); setMenuOpen(false); }}>🛒 My Orders</button>
-          <button style={styles.mobileLink} onClick={() => { document.getElementById("contact").scrollIntoView({ behavior: "smooth" }); setMenuOpen(false); }}>📞 Contact</button>
-          <button style={styles.mobileLink} onClick={() => { setPrescriptionOpen(true); setMenuOpen(false); }}>📋 Upload Prescription</button>
+        <div style={styles.mobileMenu}>
+          <button style={styles.mobileLink} onClick={() => { document.getElementById("home").scrollIntoView({ behavior: "smooth" }); close(); }}>🏠 Home</button>
+          <button style={styles.mobileLink} onClick={() => { document.getElementById("medicines").scrollIntoView({ behavior: "smooth" }); close(); }}>💊 Medicines</button>
+          <button style={styles.mobileLink} onClick={() => { setOrdersOpen(true); close(); }}>📦 My Orders</button>
+          <button style={styles.mobileLink} onClick={() => { document.getElementById("contact").scrollIntoView({ behavior: "smooth" }); close(); }}>📞 Contact</button>
+          <button style={styles.mobileLink} onClick={() => { setPrescriptionOpen(true); close(); }}>📋 Upload Prescription</button>
           {user && user.email === "razeesardar@gmail.com" && (
-            <button style={styles.mobileLink} onClick={() => { setAdminOpen(true); setMenuOpen(false); }}>🔧 Admin Dashboard</button>
+            <button style={styles.mobileLink} onClick={() => { setAdminOpen(true); close(); }}>🔧 Admin Dashboard</button>
           )}
+          <button style={styles.mobileLink} onClick={() => { setCartOpen(true); close(); }}>
+            🛒 Cart {totalItems > 0 && `(${totalItems})`}
+          </button>
           {user ? (
             <>
               <p style={styles.mobileEmail}>👤 {user.email}</p>
-              <button style={{ ...styles.mobileLink, color: "#dc2626" }} onClick={() => { handleLogout(); setMenuOpen(false); }}>🚪 Logout</button>
+              <button style={{ ...styles.mobileLink, color: "#fca5a5" }} onClick={handleLogout}>🚪 Logout</button>
             </>
           ) : (
-            <button style={styles.mobileLink} onClick={() => { setAuthOpen(true); setMenuOpen(false); }}>👤 Login / Register</button>
+            <button style={styles.mobileLink} onClick={() => { setAuthOpen(true); close(); }}>👤 Login / Register</button>
           )}
-          <button style={styles.mobileLink} onClick={() => { setCartOpen(true); setMenuOpen(false); }}>
-            🛒 Cart {totalItems > 0 && `(${totalItems})`}
-          </button>
         </div>
       )}
+
+      {/* Desktop Menu */}
+      <div className="desktop-bar" style={styles.desktopBar}>
+        <button style={styles.navLink} onClick={() => document.getElementById("home").scrollIntoView({ behavior: "smooth" })}>Home</button>
+        <button style={styles.navLink} onClick={() => document.getElementById("medicines").scrollIntoView({ behavior: "smooth" })}>Medicines</button>
+        <button style={styles.navLink} onClick={() => setOrdersOpen(true)}>Orders</button>
+        <button style={styles.navLink} onClick={() => document.getElementById("contact").scrollIntoView({ behavior: "smooth" })}>Contact</button>
+        <button style={styles.prescriptionBtn} onClick={() => setPrescriptionOpen(true)}>📋 Prescription</button>
+        {user && user.email === "razeesardar@gmail.com" && (
+          <button onClick={() => setAdminOpen(true)} style={styles.adminBtn}>🔧 Admin</button>
+        )}
+        {user ? (
+          <>
+            <span style={styles.userEmail}>👤 {user.email}</span>
+            <button onClick={handleLogout} style={styles.logoutBtn}>Logout</button>
+          </>
+        ) : (
+          <button onClick={() => setAuthOpen(true)} style={styles.loginBtn}>Login / Register</button>
+        )}
+        <button onClick={() => setCartOpen(true)} style={styles.cartBtn}>
+          🛒 Cart {totalItems > 0 && <span style={styles.badge}>{totalItems}</span>}
+        </button>
+      </div>
 
       {cartOpen && <Cart onClose={() => setCartOpen(false)} />}
       {authOpen && <Auth onClose={() => setAuthOpen(false)} />}
@@ -103,8 +110,6 @@ const styles = {
     alignItems: "center",
     backgroundColor: "#2563eb",
     padding: "15px 20px",
-    position: "relative",
-    zIndex: 100,
   },
   logo: {
     color: "white",
@@ -116,16 +121,16 @@ const styles = {
     background: "none",
     border: "none",
     color: "white",
-    fontSize: "24px",
+    fontSize: "28px",
     cursor: "pointer",
-    "@media (max-width: 768px)": {
-      display: "block",
-    },
   },
-  desktopLinks: {
+  desktopBar: {
     display: "flex",
     gap: "12px",
     alignItems: "center",
+    backgroundColor: "#1d4ed8",
+    padding: "10px 20px",
+    flexWrap: "wrap",
   },
   navLink: {
     color: "white",
@@ -157,7 +162,7 @@ const styles = {
   userEmail: {
     color: "white",
     fontSize: "13px",
-    maxWidth: "120px",
+    maxWidth: "150px",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
@@ -171,7 +176,6 @@ const styles = {
     fontSize: "15px",
     cursor: "pointer",
     fontWeight: "bold",
-    position: "relative",
   },
   badge: {
     backgroundColor: "#dc2626",
@@ -206,7 +210,6 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     backgroundColor: "#1e40af",
-    padding: "10px 0",
     zIndex: 99,
   },
   mobileLink: {
@@ -226,6 +229,5 @@ const styles = {
     margin: 0,
   },
 };
-
 
 export default Navbar;
