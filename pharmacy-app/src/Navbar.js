@@ -34,15 +34,12 @@ function Navbar() {
         <h2 style={styles.logo}>💊 Sardar Pharmacy</h2>
 
         {/* Hamburger button for mobile */}
-        <button
-          style={styles.hamburger}
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
+        <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
           {menuOpen ? "✕" : "☰"}
         </button>
 
         {/* Desktop links */}
-        <div style={styles.desktopLinks}>
+        <div className="desktop-links">
           <button style={styles.navLink} onClick={() => document.getElementById("home").scrollIntoView({ behavior: "smooth" })}>Home</button>
           <button style={styles.navLink} onClick={() => document.getElementById("medicines").scrollIntoView({ behavior: "smooth" })}>Medicines</button>
           <button style={styles.navLink} onClick={() => setOrdersOpen(true)}>Orders</button>
@@ -67,7 +64,7 @@ function Navbar() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div style={styles.mobileMenu}>
+        <div className="mobile-menu">
           <button style={styles.mobileLink} onClick={() => { document.getElementById("home").scrollIntoView({ behavior: "smooth" }); setMenuOpen(false); }}>🏠 Home</button>
           <button style={styles.mobileLink} onClick={() => { document.getElementById("medicines").scrollIntoView({ behavior: "smooth" }); setMenuOpen(false); }}>💊 Medicines</button>
           <button style={styles.mobileLink} onClick={() => { setOrdersOpen(true); setMenuOpen(false); }}>🛒 My Orders</button>
@@ -230,14 +227,5 @@ const styles = {
   },
 };
 
-// Hide desktop links on mobile using a style tag
-const styleTag = document.createElement("style");
-styleTag.innerHTML = `
-  @media (max-width: 768px) {
-    .desktop-links { display: none !important; }
-    .hamburger { display: block !important; }
-  }
-`;
-document.head.appendChild(styleTag);
 
 export default Navbar;
