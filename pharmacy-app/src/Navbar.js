@@ -36,12 +36,21 @@ function Navbar() {
     setMenuOpen(false);
   }
 
-  return (
+return (
     <>
       <nav style={styles.navbar}>
         <h2 style={styles.logo}>💊 Sardar Pharmacy</h2>
-
-        <button className="hamburger" style={styles.hamburger} onClick={() => setMenuOpen(!menuOpen)}>
+        <button
+          className="hamburger"
+          onClick={() => setMenuOpen(!menuOpen)}
+          style={{
+            background: "none",
+            border: "none",
+            color: "white",
+            fontSize: "28px",
+            cursor: "pointer",
+          }}
+        >
           {menuOpen ? "✕" : "☰"}
         </button>
       </nav>
@@ -101,7 +110,6 @@ function Navbar() {
       {prescriptionOpen && <PrescriptionUpload onClose={() => setPrescriptionOpen(false)} />}
     </>
   );
-}
 
 const styles = {
   navbar: {

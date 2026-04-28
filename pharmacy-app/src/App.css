@@ -8,12 +8,25 @@ body {
   overflow-x: hidden;
 }
 
-/* Show hamburger, hide desktop bar on mobile */
+.hamburger {
+  display: none;
+}
+
+.desktop-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background-color: #1d4ed8;
+  padding: 10px 20px;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 768px) {
   .hamburger {
-    display: block !important;
+    display: block;
   }
+
   .desktop-bar {
-    display: none !important;
+    display: none;
   }
 }
