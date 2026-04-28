@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { auth, db } from "./firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
+import { getMedicineEmoji } from "./medicineUtils";
 
 function MyOrders({ onClose }) {
   const [orders, setOrders] = useState([]);
@@ -24,41 +25,97 @@ function MyOrders({ onClose }) {
     setLoading(false);
   }
 
+  function getStatusColor(status) {
+    switch (status) {
+      case "delivered": return { bg: "#f0fdf4", color: "#16a34a" };
+      case "processing": return { bg: "#eff6ff", color: "#2563eb" };
+      case "cancelled": return { bg: "#fef2f2", color: "#dc2626" };
+      default: return { bg: "#fffbeb", color: "#d97706" };
+    }
+  }
+
+  function getStatusIcon(status) {
+    switch (status) {
+      case "delivered": return "✅";
+      case "processing": return "🔄";
+      case "cancelled": return "❌";
+      default: return "⏳";
+    }
+  }
+
   return (
     <div style={styles.overlay}>
       <div style={styles.box}>
-        <button onClick={onClose} style={styles.closeBtn}>✕</button>
-        <h2 style={styles.title}>🛒 My Orders</h2>
+        <div style={styles.header}>
+          <div>
+            <h2 style={styles.title}>My Orders</h2>
+            <p style={styles.subtitle}>{orders.length} order{orders.length !== 1 ? "s" : ""} found</p>
+          </div>
+          <button onClick={onClose} style={styles.closeBtn}>✕</button>
+        </div>
 
-        {!auth.currentUser ? (
-          <p style={styles.empty}>Please login to view your orders.</p>
-        ) : loading ? (
-          <p style={styles.empty}>Loading...</p>
-        ) : orders.length === 0 ? (
-          <p style={styles.empty}>You have no orders yet.</p>
-        ) : (
-          orders.map((o) => (
-            <div key={o.id} style={styles.card}>
-              <div style={styles.cardHeader}>
-                <span style={styles.date}>📅 {o.createdAt?.toDate?.().toLocaleString()}</span>
-                <span style={{
-                  ...styles.status,
-                  color: o.status === "delivered" ? "#16a34a" : o.status === "cancelled" ? "#dc2626" : "#d97706"
-                }}>
-                  {o.status}
-                </span>
-              </div>
-              {o.items?.map((item, i) => (
-                <p key={i} style={styles.item}>
-                  💊 {item.name} x{item.quantity} — ৳{(parseFloat(item.price) * item.quantity).toFixed(2)}
-                </p>
-              ))}
-              <p style={styles.total}>Total: ৳{o.total}</p>
-              <p style={styles.address}>📍 {o.address}</p>
-              <p style={styles.address}>💳 {o.paymentMethod}</p>
+        <div style={styles.body}>
+          {!auth.currentUser ? (
+            <div style={styles.empty}>
+              <p style={styles.emptyIcon}>🔒</p>
+              <p style={styles.emptyText}>Please login to view your orders</p>
             </div>
-          ))
-        )}
+          ) : loading ? (
+            <div style={styles.empty}>
+              <p style={styles.emptyIcon}>⏳</p>
+              <p style={styles.emptyText}>Loading your orders...</p>
+            </div>
+          ) : orders.length === 0 ? (
+            <div style={styles.empty}>
+              <p style={styles.emptyIcon}>📦</p>
+              <p style={styles.emptyText}>No orders yet</p>
+              <p style={styles.emptySub}>Start shopping to place your first order!</p>
+            </div>
+          ) : (
+            orders.map((o) => {
+              const statusStyle = getStatusColor(o.status);
+              return (
+                <div key={o.id} style={styles.card}>
+                  <div style={styles.cardHeader}>
+                    <div>
+                      <p style={styles.orderId}>Order #{o.id.slice(0, 8).toUpperCase()}</p>
+                      <p style={styles.orderDate}>📅 {o.createdAt?.toDate?.().toLocaleString()}</p>
+                    </div>
+                    <span style={{
+                      ...styles.statusBadge,
+                      backgroundColor: statusStyle.bg,
+                      color: statusStyle.color,
+                    }}>
+                      {getStatusIcon(o.status)} {o.status}
+                    </span>
+                  </div>
+
+                  <div style={styles.itemsList}>
+                    {o.items?.map((item, i) => (
+                      <div key={i} style={styles.item}>
+                        <span style={styles.itemName}>{getMedicineEmoji(item.category)} {item.name} {item.unit_size > 1 ? `(${item.unit})` : ""}</span>
+                        <span style={styles.itemQty}>×{item.quantity}</span>
+                        <span style={styles.itemPrice}>৳{(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={styles.cardFooter}>
+                    <div style={styles.deliveryInfo}>
+                      <p style={styles.deliveryText}>📍 {o.address}</p>
+                      <p style={styles.deliveryText}>📞 {o.phone}</p>
+                      <p style={styles.deliveryText}>💳 {o.paymentMethod}</p>
+                    </div>
+                    <div style={styles.totalBox}>
+                      <p style={styles.totalLabel}>Total</p>
+                      <p style={styles.totalAmt}>৳{o.total}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );
@@ -67,77 +124,169 @@ function MyOrders({ onClose }) {
 const styles = {
   overlay: {
     position: "fixed",
-    top: 0, left: 0,
-    width: "100%", height: "100%",
+    inset: 0,
     backgroundColor: "rgba(0,0,0,0.5)",
     zIndex: 2000,
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
+    backdropFilter: "blur(4px)",
+    padding: "20px",
   },
   box: {
     backgroundColor: "white",
-    borderRadius: "16px",
-    padding: "40px",
-    width: "500px",
+    borderRadius: "24px",
+    width: "100%",
+    maxWidth: "560px",
     maxHeight: "90vh",
-    overflowY: "auto",
-    position: "relative",
-    boxShadow: "0 10px 40px rgba(0,0,0,0.2)",
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+    boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
   },
-  closeBtn: {
-    position: "absolute",
-    top: "16px", right: "16px",
-    background: "none", border: "none",
-    fontSize: "20px", cursor: "pointer",
-    color: "#64748b",
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "24px 28px",
+    background: "linear-gradient(135deg, #1e3a8a, #2563eb)",
   },
   title: {
+    color: "white",
     fontSize: "22px",
-    color: "#1e40af",
-    marginBottom: "20px",
-    textAlign: "center",
+    fontWeight: "800",
+    margin: 0,
+  },
+  subtitle: {
+    color: "rgba(255,255,255,0.75)",
+    fontSize: "13px",
+    margin: "4px 0 0 0",
+  },
+  closeBtn: {
+    background: "rgba(255,255,255,0.2)",
+    border: "none",
+    color: "white",
+    fontSize: "16px",
+    cursor: "pointer",
+    borderRadius: "50%",
+    width: "32px",
+    height: "32px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  body: {
+    padding: "20px",
+    overflowY: "auto",
+    flex: 1,
   },
   empty: {
     textAlign: "center",
+    padding: "60px 20px",
+  },
+  emptyIcon: {
+    fontSize: "56px",
+    marginBottom: "16px",
+  },
+  emptyText: {
+    fontSize: "18px",
+    fontWeight: "700",
+    color: "#1e293b",
+    marginBottom: "8px",
+  },
+  emptySub: {
+    fontSize: "14px",
     color: "#94a3b8",
-    padding: "40px",
   },
   card: {
     backgroundColor: "#f8fafc",
-    borderRadius: "12px",
-    padding: "16px",
-    marginBottom: "12px",
+    borderRadius: "16px",
+    padding: "18px",
+    marginBottom: "14px",
+    border: "1px solid #e2e8f0",
   },
   cardHeader: {
     display: "flex",
     justifyContent: "space-between",
-    marginBottom: "10px",
+    alignItems: "flex-start",
+    marginBottom: "14px",
   },
-  date: {
-    fontSize: "13px",
-    color: "#64748b",
+  orderId: {
+    fontWeight: "800",
+    color: "#1e293b",
+    fontSize: "15px",
+    margin: "0 0 4px 0",
   },
-  status: {
-    fontSize: "13px",
-    fontWeight: "bold",
+  orderDate: {
+    fontSize: "12px",
+    color: "#94a3b8",
+    margin: 0,
+  },
+  statusBadge: {
+    padding: "6px 12px",
+    borderRadius: "50px",
+    fontSize: "12px",
+    fontWeight: "700",
     textTransform: "capitalize",
   },
+  itemsList: {
+    backgroundColor: "white",
+    borderRadius: "12px",
+    padding: "12px",
+    marginBottom: "14px",
+    border: "1px solid #f1f5f9",
+  },
   item: {
-    fontSize: "14px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "6px 0",
+    borderBottom: "1px solid #f8fafc",
+  },
+  itemName: {
+    fontSize: "13px",
     color: "#1e293b",
-    margin: "4px 0",
+    flex: 1,
+    fontWeight: "500",
   },
-  total: {
-    fontSize: "15px",
-    fontWeight: "bold",
-    color: "#1e40af",
-    marginTop: "10px",
-  },
-  address: {
+  itemQty: {
     fontSize: "13px",
     color: "#64748b",
-    margin: "4px 0",
+    margin: "0 12px",
+  },
+  itemPrice: {
+    fontSize: "13px",
+    color: "#2563eb",
+    fontWeight: "700",
+  },
+  cardFooter: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  deliveryInfo: {
+    flex: 1,
+  },
+  deliveryText: {
+    fontSize: "12px",
+    color: "#64748b",
+    margin: "3px 0",
+  },
+  totalBox: {
+    textAlign: "right",
+  },
+  totalLabel: {
+    fontSize: "11px",
+    color: "#94a3b8",
+    margin: "0 0 2px 0",
+    textTransform: "uppercase",
+    fontWeight: "600",
+  },
+  totalAmt: {
+    fontSize: "22px",
+    fontWeight: "800",
+    color: "#1e40af",
+    margin: 0,
   },
 };
 
