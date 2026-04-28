@@ -36,26 +36,18 @@ function Navbar() {
     setMenuOpen(false);
   }
 
-return (
+  return (
     <>
       <nav style={styles.navbar}>
         <h2 style={styles.logo}>💊 Sardar Pharmacy</h2>
         <button
           className="hamburger"
           onClick={() => setMenuOpen(!menuOpen)}
-          style={{
-            background: "none",
-            border: "none",
-            color: "white",
-            fontSize: "28px",
-            cursor: "pointer",
-          }}
         >
           {menuOpen ? "✕" : "☰"}
         </button>
       </nav>
 
-      {/* Mobile Dropdown Menu */}
       {menuOpen && (
         <div style={styles.mobileMenu}>
           <button style={styles.mobileLink} onClick={() => { document.getElementById("home").scrollIntoView({ behavior: "smooth" }); close(); }}>🏠 Home</button>
@@ -80,7 +72,6 @@ return (
         </div>
       )}
 
-      {/* Desktop Menu */}
       <div className="desktop-bar" style={styles.desktopBar}>
         <button style={styles.navLink} onClick={() => document.getElementById("home").scrollIntoView({ behavior: "smooth" })}>Home</button>
         <button style={styles.navLink} onClick={() => document.getElementById("medicines").scrollIntoView({ behavior: "smooth" })}>Medicines</button>
@@ -110,6 +101,7 @@ return (
       {prescriptionOpen && <PrescriptionUpload onClose={() => setPrescriptionOpen(false)} />}
     </>
   );
+}
 
 const styles = {
   navbar: {
@@ -123,14 +115,6 @@ const styles = {
     color: "white",
     margin: 0,
     fontSize: "18px",
-  },
-  hamburger: {
-    display: "none",
-    background: "none",
-    border: "none",
-    color: "white",
-    fontSize: "28px",
-    cursor: "pointer",
   },
   desktopBar: {
     display: "flex",
