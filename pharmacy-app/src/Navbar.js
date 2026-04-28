@@ -72,28 +72,6 @@ function Navbar() {
         </div>
       )}
 
-      <div className="desktop-bar" style={styles.desktopBar}>
-        <button style={styles.navLink} onClick={() => document.getElementById("home").scrollIntoView({ behavior: "smooth" })}>Home</button>
-        <button style={styles.navLink} onClick={() => document.getElementById("medicines").scrollIntoView({ behavior: "smooth" })}>Medicines</button>
-        <button style={styles.navLink} onClick={() => setOrdersOpen(true)}>Orders</button>
-        <button style={styles.navLink} onClick={() => document.getElementById("contact").scrollIntoView({ behavior: "smooth" })}>Contact</button>
-        <button style={styles.prescriptionBtn} onClick={() => setPrescriptionOpen(true)}>📋 Prescription</button>
-        {user && user.email === "razeesardar@gmail.com" && (
-          <button onClick={() => setAdminOpen(true)} style={styles.adminBtn}>🔧 Admin</button>
-        )}
-        {user ? (
-          <>
-            <span style={styles.userEmail}>👤 {user.email}</span>
-            <button onClick={handleLogout} style={styles.logoutBtn}>Logout</button>
-          </>
-        ) : (
-          <button onClick={() => setAuthOpen(true)} style={styles.loginBtn}>Login / Register</button>
-        )}
-        <button onClick={() => setCartOpen(true)} style={styles.cartBtn}>
-          🛒 Cart {totalItems > 0 && <span style={styles.badge}>{totalItems}</span>}
-        </button>
-      </div>
-
       {cartOpen && <Cart onClose={() => setCartOpen(false)} />}
       {authOpen && <Auth onClose={() => setAuthOpen(false)} />}
       {adminOpen && <AdminDashboard onClose={() => setAdminOpen(false)} />}
@@ -115,14 +93,6 @@ const styles = {
     color: "white",
     margin: 0,
     fontSize: "18px",
-  },
-  desktopBar: {
-    display: "flex",
-    gap: "12px",
-    alignItems: "center",
-    backgroundColor: "#1d4ed8",
-    padding: "10px 20px",
-    flexWrap: "wrap",
   },
   navLink: {
     color: "white",
