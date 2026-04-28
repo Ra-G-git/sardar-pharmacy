@@ -5,9 +5,21 @@
 }
 
 body {
+  font-family: 'Inter', sans-serif;
+  background-color: #f8fafc;
+  color: #1e293b;
   overflow-x: hidden;
 }
 
+h1, h2, h3 {
+  font-family: 'Poppins', sans-serif;
+}
+
+button {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Hamburger */
 .hamburger {
   display: none;
   background: none;
@@ -15,22 +27,41 @@ body {
   color: white;
   font-size: 28px;
   cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.2s;
 }
 
-.desktop-bar {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  background-color: #1d4ed8;
-  padding: 10px 20px;
-  flex-wrap: wrap;
+.hamburger:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2563eb;
+  border-radius: 10px;
 }
 
 @media (max-width: 768px) {
   .hamburger {
     display: block;
-  }
-  .desktop-bar {
-    display: none;
   }
 }

@@ -17,6 +17,7 @@ function Navbar() {
   const [prescriptionOpen, setPrescriptionOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [scrolled, setScrolled] = useState(false);
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -27,47 +28,77 @@ function Navbar() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   async function handleLogout() {
     await signOut(auth);
     setMenuOpen(false);
   }
 
-  function close() {
-    setMenuOpen(false);
-  }
+  function close() { setMenuOpen(false); }
 
   return (
     <>
-      <nav style={styles.navbar}>
-        <h2 style={styles.logo}>💊 Sardar Pharmacy</h2>
-        <button
-          className="hamburger"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
+      <nav style={{
+        ...styles.navbar,
+        boxShadow: scrolled ? "0 4px 20px rgba(0,0,0,0.15)" : "none",
+      }}>
+        <div style={styles.logoSection}>
+          <span style={styles.logoIcon}>💊</span>
+          <div>
+            <h2 style={styles.logoText}>Sardar Pharmacy</h2>
+            <p style={styles.logoSub}>Mirpur, Dhaka</p>
+          </div>
+        </div>
+
+        <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
           {menuOpen ? "✕" : "☰"}
         </button>
       </nav>
 
       {menuOpen && (
         <div style={styles.mobileMenu}>
-          <button style={styles.mobileLink} onClick={() => { document.getElementById("home").scrollIntoView({ behavior: "smooth" }); close(); }}>🏠 Home</button>
-          <button style={styles.mobileLink} onClick={() => { document.getElementById("medicines").scrollIntoView({ behavior: "smooth" }); close(); }}>💊 Medicines</button>
-          <button style={styles.mobileLink} onClick={() => { setOrdersOpen(true); close(); }}>📦 My Orders</button>
-          <button style={styles.mobileLink} onClick={() => { document.getElementById("contact").scrollIntoView({ behavior: "smooth" }); close(); }}>📞 Contact</button>
-          <button style={styles.mobileLink} onClick={() => { setPrescriptionOpen(true); close(); }}>📋 Upload Prescription</button>
+          {[
+            { icon: "🏠", label: "Home", action: () => { document.getElementById("home").scrollIntoView({ behavior: "smooth" }); close(); }},
+            { icon: "💊", label: "Medicines", action: () => { document.getElementById("medicines").scrollIntoView({ behavior: "smooth" }); close(); }},
+            { icon: "📦", label: "My Orders", action: () => { setOrdersOpen(true); close(); }},
+            { icon: "📋", label: "Upload Prescription", action: () => { setPrescriptionOpen(true); close(); }},
+            { icon: "📞", label: "Contact", action: () => { document.getElementById("contact").scrollIntoView({ behavior: "smooth" }); close(); }},
+          ].map((item) => (
+            <button key={item.label} style={styles.mobileLink} onClick={item.action}>
+              <span style={styles.mobileLinkIcon}>{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+
           {user && user.email === "razeesardar@gmail.com" && (
-            <button style={styles.mobileLink} onClick={() => { setAdminOpen(true); close(); }}>🔧 Admin Dashboard</button>
+            <button style={{ ...styles.mobileLink, color: "#fbbf24" }} onClick={() => { setAdminOpen(true); close(); }}>
+              <span style={styles.mobileLinkIcon}>🔧</span> Admin Dashboard
+            </button>
           )}
+
+          <div style={styles.mobileDivider} />
+
           <button style={styles.mobileLink} onClick={() => { setCartOpen(true); close(); }}>
-            🛒 Cart {totalItems > 0 && `(${totalItems})`}
+            <span style={styles.mobileLinkIcon}>🛒</span>
+            Cart {totalItems > 0 && <span style={styles.mobileBadge}>{totalItems}</span>}
           </button>
+
           {user ? (
             <>
               <p style={styles.mobileEmail}>👤 {user.email}</p>
-              <button style={{ ...styles.mobileLink, color: "#fca5a5" }} onClick={handleLogout}>🚪 Logout</button>
+              <button style={{ ...styles.mobileLink, color: "#fca5a5" }} onClick={handleLogout}>
+                <span style={styles.mobileLinkIcon}>🚪</span> Logout
+              </button>
             </>
           ) : (
-            <button style={styles.mobileLink} onClick={() => { setAuthOpen(true); close(); }}>👤 Login / Register</button>
+            <button style={{ ...styles.mobileLink, color: "#93c5fd" }} onClick={() => { setAuthOpen(true); close(); }}>
+              <span style={styles.mobileLinkIcon}>👤</span> Login / Register
+            </button>
           )}
         </div>
       )}
@@ -86,108 +117,83 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#2563eb",
-    padding: "15px 20px",
+    background: "linear-gradient(135deg, #1e40af 0%, #2563eb 100%)",
+    padding: "14px 24px",
+    position: "sticky",
+    top: 0,
+    zIndex: 1000,
+    transition: "box-shadow 0.3s ease",
   },
-  logo: {
+  logoSection: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+  },
+  logoIcon: {
+    fontSize: "32px",
+  },
+  logoText: {
     color: "white",
+    fontSize: "20px",
+    fontWeight: "700",
     margin: 0,
-    fontSize: "18px",
+    letterSpacing: "-0.3px",
   },
-  navLink: {
-    color: "white",
-    background: "none",
-    border: "none",
-    fontSize: "15px",
-    cursor: "pointer",
-  },
-  loginBtn: {
-    backgroundColor: "white",
-    color: "#2563eb",
-    border: "none",
-    padding: "8px 14px",
-    borderRadius: "8px",
-    fontSize: "14px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-  logoutBtn: {
-    backgroundColor: "#dc2626",
-    color: "white",
-    border: "none",
-    padding: "8px 14px",
-    borderRadius: "8px",
-    fontSize: "14px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-  userEmail: {
-    color: "white",
-    fontSize: "13px",
-    maxWidth: "150px",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  cartBtn: {
-    backgroundColor: "white",
-    color: "#2563eb",
-    border: "none",
-    padding: "8px 14px",
-    borderRadius: "8px",
-    fontSize: "15px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-  badge: {
-    backgroundColor: "#dc2626",
-    color: "white",
-    borderRadius: "50%",
-    padding: "2px 7px",
-    fontSize: "12px",
-    marginLeft: "4px",
-    fontWeight: "bold",
-  },
-  prescriptionBtn: {
-    backgroundColor: "#16a34a",
-    color: "white",
-    border: "none",
-    padding: "8px 14px",
-    borderRadius: "8px",
-    fontSize: "14px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-  adminBtn: {
-    backgroundColor: "#1e293b",
-    color: "white",
-    border: "none",
-    padding: "8px 14px",
-    borderRadius: "8px",
-    fontSize: "14px",
-    cursor: "pointer",
-    fontWeight: "bold",
+  logoSub: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: "11px",
+    margin: 0,
   },
   mobileMenu: {
-    display: "flex",
-    flexDirection: "column",
-    backgroundColor: "#1e40af",
-    zIndex: 99,
-  },
+  position: "fixed",
+  top: "70px",
+  right: 0,
+  width: "280px",
+  bottom: 0,
+  backgroundColor: "#1e3a8a",
+  zIndex: 999,
+  overflowY: "auto",
+  display: "flex",
+  flexDirection: "column",
+  boxShadow: "-4px 0 20px rgba(0,0,0,0.3)",
+},
   mobileLink: {
     background: "none",
     border: "none",
     color: "white",
-    fontSize: "16px",
-    padding: "14px 24px",
+    fontSize: "17px",
+    padding: "18px 28px",
     textAlign: "left",
     cursor: "pointer",
-    borderBottom: "1px solid rgba(255,255,255,0.1)",
+    borderBottom: "1px solid rgba(255,255,255,0.08)",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    fontWeight: "500",
+    transition: "background 0.2s",
+  },
+  mobileLinkIcon: {
+    fontSize: "20px",
+    width: "28px",
+  },
+  mobileBadge: {
+    backgroundColor: "#ef4444",
+    color: "white",
+    borderRadius: "50%",
+    padding: "2px 8px",
+    fontSize: "12px",
+    fontWeight: "bold",
+    marginLeft: "8px",
+  },
+  mobileDivider: {
+    height: "1px",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    margin: "8px 0",
   },
   mobileEmail: {
     color: "#93c5fd",
     fontSize: "13px",
-    padding: "8px 24px",
+    padding: "12px 28px",
     margin: 0,
   },
 };
