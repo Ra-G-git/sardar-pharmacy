@@ -17,20 +17,11 @@ body {
   cursor: pointer;
 }
 
-.desktop-bar {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  background-color: #1d4ed8;
-  padding: 10px 20px;
-  flex-wrap: wrap;
-}
-
 @media (max-width: 768px) {
   .hamburger {
     display: block;
   }
   .desktop-bar {
-    display: none;
+    display: none !important;
   }
 }
