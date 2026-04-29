@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { auth, db } from "./firebase";
 import { collection, getDocs, updateDoc, doc } from "firebase/firestore";
 import { getMedicineEmoji } from "./medicineUtils";
+import { downloadReceipt, printReceipt, whatsappReceipt } from "./Receipt";
 
 const ADMIN_EMAIL = "razeesardar@gmail.com";
 
@@ -225,6 +226,56 @@ function AdminDashboard({ onClose }) {
                                 <button onClick={() => updateOrderStatus(o.id, "processing")} style={styles.processBtn}>🔄 Processing</button>
                                 <button onClick={() => updateOrderStatus(o.id, "delivered")} style={styles.approveBtn}>✅ Delivered</button>
                                 <button onClick={() => updateOrderStatus(o.id, "cancelled")} style={styles.rejectBtn}>❌ Cancel</button>
+                              </div>
+                              <div style={styles.btnRow}>
+                                <button
+                                  onClick={() => printReceipt({
+                                    id: o.id,
+                                    name: o.name,
+                                    phone: o.phone,
+                                    address: o.address,
+                                    paymentMethod: o.paymentMethod,
+                                    items: o.items,
+                                    total: o.total,
+                                    status: o.status,
+                                    createdAt: o.createdAt?.toDate?.().toLocaleString(),
+                                  })}
+                                  style={styles.printBtn}
+                                >
+                                  🖨️ Print
+                                </button>
+                                <button
+                                  onClick={() => downloadReceipt({
+                                    id: o.id,
+                                    name: o.name,
+                                    phone: o.phone,
+                                    address: o.address,
+                                    paymentMethod: o.paymentMethod,
+                                    items: o.items,
+                                    total: o.total,
+                                    status: o.status,
+                                    createdAt: o.createdAt?.toDate?.().toLocaleString(),
+                                  })}
+                                  style={styles.downloadBtn}
+                                >
+                                  📥 PDF
+                                </button>
+                                <button
+                                  onClick={() => whatsappReceipt({
+                                    id: o.id,
+                                    name: o.name,
+                                    phone: o.phone,
+                                    address: o.address,
+                                    paymentMethod: o.paymentMethod,
+                                    items: o.items,
+                                    total: o.total,
+                                    status: o.status,
+                                    createdAt: o.createdAt?.toDate?.().toLocaleString(),
+                                  })}
+                                  style={styles.whatsappBtn}
+                                >
+                                  💬 WhatsApp
+                                </button>
                               </div>
                             </div>
                           </div>

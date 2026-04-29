@@ -2,6 +2,7 @@ import { useState } from "react";
 import { auth, db } from "./firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useCart } from "./CartContext";
+import { downloadReceipt, printReceipt, whatsappReceipt } from "./Receipt";
 
 function Checkout({ onClose }) {
   const { cart, clearCart } = useCart();
@@ -12,6 +13,9 @@ function Checkout({ onClose }) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [lastOrderId, setLastOrderId] = useState("");
+  const [lastOrderItems, setLastOrderItems] = useState([]);
+  const [lastTotal, setLastTotal] = useState("");
 
   const total = cart.reduce(
     (sum, item) => sum + parseFloat(item.price) * item.quantity,
@@ -36,7 +40,7 @@ function Checkout({ onClose }) {
     setError("");
 
     try {
-      await addDoc(collection(db, "orders"), {
+      const ref = await addDoc(collection(db, "orders"), {
         userId: auth.currentUser.uid,
         userEmail: auth.currentUser.email,
         name,
@@ -57,8 +61,19 @@ function Checkout({ onClose }) {
         createdAt: serverTimestamp(),
       });
 
-      clearCart();
-      setSuccess(true);
+        setLastOrderId(ref.id);
+        setLastOrderItems(cart.map((item) => ({
+          name: item.medicine_name,
+          category: item.category_name,
+          price: item.price,
+          quantity: item.quantity,
+          unit: item.unit,
+          unit_size: item.unit_size,
+          strength: item.strength,
+        })));
+        setLastTotal(total.toFixed(2));
+        clearCart();
+        setSuccess(true);
     } catch (err) {
       setError("Something went wrong. Please try again.");
     }
@@ -66,7 +81,7 @@ function Checkout({ onClose }) {
     setLoading(false);
   }
 
-  if (success) {
+if (success) {
     return (
       <div style={styles.overlay}>
         <div style={styles.successBox}>
@@ -75,6 +90,47 @@ function Checkout({ onClose }) {
           <p style={styles.successText}>
             Thank you! Your order has been received. We'll contact you at <strong>{phone}</strong> shortly.
           </p>
+          <div style={styles.receiptButtons}>
+            <button
+              style={styles.printBtn}
+              onClick={() => printReceipt({
+                id: lastOrderId,
+                name, phone, address, paymentMethod,
+                items: lastOrderItems,
+                total: lastTotal,
+                status: "pending",
+                createdAt: new Date().toLocaleString(),
+              })}
+            >
+              🖨️ Print Receipt
+            </button>
+            <button
+              style={styles.downloadBtn}
+              onClick={() => downloadReceipt({
+                id: lastOrderId,
+                name, phone, address, paymentMethod,
+                items: lastOrderItems,
+                total: lastTotal,
+                status: "pending",
+                createdAt: new Date().toLocaleString(),
+              })}
+            >
+              📥 Download PDF
+            </button>
+            <button
+              style={styles.whatsappBtn}
+              onClick={() => whatsappReceipt({
+                id: lastOrderId,
+                name, phone, address, paymentMethod,
+                items: lastOrderItems,
+                total: lastTotal,
+                status: "pending",
+                createdAt: new Date().toLocaleString(),
+              })}
+            >
+              💬 Send WhatsApp
+            </button>
+          </div>
           <button onClick={onClose} style={styles.successBtn}>
             Back to Shopping
           </button>
@@ -382,6 +438,43 @@ const styles = {
     fontWeight: "700",
     cursor: "pointer",
     boxShadow: "0 4px 14px rgba(37,99,235,0.35)",
+  },
+  receiptButtons: {
+  display: "flex",
+  gap: "10px",
+  flexWrap: "wrap",
+  justifyContent: "center",
+  marginBottom: "16px",
+  },
+  printBtn: {
+    padding: "12px 18px",
+    backgroundColor: "#1e293b",
+    color: "white",
+    border: "none",
+    borderRadius: "12px",
+    fontSize: "14px",
+    fontWeight: "700",
+    cursor: "pointer",
+  },
+  downloadBtn: {
+    padding: "12px 18px",
+    backgroundColor: "#1e40af",
+    color: "white",
+    border: "none",
+    borderRadius: "12px",
+    fontSize: "14px",
+    fontWeight: "700",
+    cursor: "pointer",
+  },
+  whatsappBtn: {
+    padding: "12px 18px",
+    backgroundColor: "#16a34a",
+    color: "white",
+    border: "none",
+    borderRadius: "12px",
+    fontSize: "14px",
+    fontWeight: "700",
+    cursor: "pointer",
   },
 };
 

@@ -7,6 +7,7 @@ import Auth from "./Auth";
 import AdminDashboard from "./AdminDashboard";
 import MyOrders from "./MyOrders";
 import PrescriptionUpload from "./PrescriptionUpload";
+import POS from "./POS";
 
 function Navbar() {
   const { cart } = useCart();
@@ -18,6 +19,7 @@ function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [scrolled, setScrolled] = useState(false);
+  const [posOpen, setPosOpen] = useState(false);
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -79,6 +81,11 @@ function Navbar() {
               <span style={styles.mobileLinkIcon}>🔧</span> Admin Dashboard
             </button>
           )}
+          {user && user.email === "razeesardar@gmail.com" && (
+            <button style={{ ...styles.mobileLink, color: "#fbbf24" }} onClick={() => { setPosOpen(true); close(); }}>
+              <span style={styles.mobileLinkIcon}>🏪</span> POS
+            </button>
+          )}
 
           <div style={styles.mobileDivider} />
 
@@ -107,6 +114,7 @@ function Navbar() {
       {adminOpen && <AdminDashboard onClose={() => setAdminOpen(false)} />}
       {ordersOpen && <MyOrders onClose={() => setOrdersOpen(false)} />}
       {prescriptionOpen && <PrescriptionUpload onClose={() => setPrescriptionOpen(false)} />}
+      {posOpen && <POS onClose={() => setPosOpen(false)} />}
     </>
   );
 }
