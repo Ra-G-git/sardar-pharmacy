@@ -209,7 +209,6 @@ const styles = {
     flex: 1,
   },
   uploadArea: {
-    display: "block",
     border: "2px dashed #cbd5e1",
     borderRadius: "16px",
     padding: "20px",
