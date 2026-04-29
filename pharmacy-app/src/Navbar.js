@@ -54,7 +54,6 @@ function Navbar() {
             <p style={styles.logoSub}>Mirpur, Dhaka</p>
           </div>
         </div>
-
         <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
           {menuOpen ? "✕" : "☰"}
         </button>
@@ -145,18 +144,18 @@ const styles = {
     margin: 0,
   },
   mobileMenu: {
-  position: "fixed",
-  top: "70px",
-  right: 0,
-  width: "280px",
-  bottom: 0,
-  backgroundColor: "#1e3a8a",
-  zIndex: 999,
-  overflowY: "auto",
-  display: "flex",
-  flexDirection: "column",
-  boxShadow: "-4px 0 20px rgba(0,0,0,0.3)",
-},
+    position: "fixed",
+    top: "70px",
+    right: 0,
+    width: "280px",
+    bottom: 0,
+    backgroundColor: "#1e3a8a",
+    zIndex: 999,
+    overflowY: "auto",
+    display: "flex",
+    flexDirection: "column",
+    boxShadow: "-4px 0 20px rgba(0,0,0,0.3)",
+  },
   mobileLink: {
     background: "none",
     border: "none",
@@ -170,7 +169,6 @@ const styles = {
     alignItems: "center",
     gap: "12px",
     fontWeight: "500",
-    transition: "background 0.2s",
   },
   mobileLinkIcon: {
     fontSize: "20px",
