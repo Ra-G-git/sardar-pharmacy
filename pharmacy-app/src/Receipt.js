@@ -55,15 +55,15 @@ export function generateReceipt(order) {
   const tableRows = order.items?.map((item) => [
     item.name,
     item.category || "",
-    `${item.strength || ""} ${item.unit_size > 1 ? `(${item.unit})` : ""}`.trim(),
+    `${item.strength || ""}${item.unit_size > 1 ? ` (${item.unit}, ${item.unit_size}pcs)` : ""}`.trim(),
     item.quantity,
-    `${parseFloat(item.price).toFixed(2)}`,
-    `${(parseFloat(item.price) * item.quantity).toFixed(2)}`,
+    `Tk ${parseFloat(item.price).toFixed(2)}`,
+    `Tk ${(parseFloat(item.price) * item.quantity).toFixed(2)}`,
   ]) || [];
 
   autoTable(doc, {
     startY: 95,
-    head: [["Medicine", "Category", "Strength", "Qty", "Unit Price (৳)", "Total (৳)"]],
+    head: [["Medicine", "Category", "Strength/Pack", "Qty", "Unit Price (Tk)", "Total (Tk)"]],
     body: tableRows,
     theme: "striped",
     headStyles: {
