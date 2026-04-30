@@ -52,14 +52,19 @@ export function generateReceipt(order) {
   doc.line(14, 90, 196, 90);
 
   // Items table
-  const tableRows = order.items?.map((item) => [
-    item.name,
-    item.category || "",
-    `${item.strength || ""}${item.unit_size > 1 ? ` (${item.unit}, ${item.unit_size}pcs)` : ""}`.trim(),
-    item.quantity,
-    `Tk ${parseFloat(item.price).toFixed(2)}`,
-    `Tk ${(parseFloat(item.price) * item.quantity).toFixed(2)}`,
-  ]) || [];
+  const tableRows = order.items?.map((item) => {
+      const packInfo = item.unit_size > 1 
+        ? `Pack of ${item.unit_size} (${item.unit})` 
+        : "Per piece";
+      return [
+        item.name,
+        item.category || "",
+        `${item.strength || ""}\n${packInfo}`,
+        item.quantity,
+        `Tk ${parseFloat(item.price).toFixed(2)}`,
+        `Tk ${(parseFloat(item.price) * item.quantity).toFixed(2)}`,
+      ];
+    }) || [];
 
   autoTable(doc, {
     startY: 95,
@@ -248,7 +253,7 @@ export function printReceipt(order) {
 
       <div class="total-row">
         <span>TOTAL:</span>
-        <span>BDT ${parseFloat(order.total).toFixed(2)}</span>
+        <span>TK ${parseFloat(order.total).toFixed(2)}</span>
       </div>
       <div class="words">${numberToWords(parseFloat(order.total))} Taka only</div>
 

@@ -22,6 +22,9 @@ function POSPage() {
   const [salesHistory, setSalesHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [user, setUser] = useState(null);
+  const [discount, setDiscount] = useState(0);
+  const [note, setNote] = useState("");
+  const [historySearch, setHistorySearch] = useState("");
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((u) => setUser(u));
@@ -40,8 +43,9 @@ function POSPage() {
     if (search.length < 2) { setFiltered([]); return; }
     const results = medicines.filter((med) =>
       med.medicine_name?.toLowerCase().includes(search.toLowerCase()) ||
-      med.generic_name?.toLowerCase().includes(search.toLowerCase())
-    ).slice(0, 8);
+      med.generic_name?.toLowerCase().includes(search.toLowerCase()) ||
+      med.category_name?.toLowerCase().includes(search.toLowerCase())
+    ).slice(0, 10);
     setFiltered(results);
   }, [search, medicines]);
 
@@ -80,15 +84,21 @@ function POSPage() {
   }
 
   function updateQty(slug, qty) {
-    if (qty < 1) { setCart((prev) => prev.filter((item) => item.slug !== slug)); return; }
-    setCart((prev) => prev.map((item) => item.slug === slug ? { ...item, quantity: qty } : item));
+    const num = parseInt(qty);
+    if (isNaN(num) || num < 1) {
+      setCart((prev) => prev.filter((item) => item.slug !== slug));
+      return;
+    }
+    setCart((prev) => prev.map((item) => item.slug === slug ? { ...item, quantity: num } : item));
   }
 
   function removeFromCart(slug) {
     setCart((prev) => prev.filter((item) => item.slug !== slug));
   }
 
-  const total = cart.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0);
+  const subtotal = cart.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0);
+  const discountAmt = (subtotal * discount) / 100;
+  const total = subtotal - discountAmt;
 
   async function handleCheckout() {
     if (cart.length === 0) return;
@@ -102,6 +112,9 @@ function POSPage() {
         address: "In-store purchase",
         paymentMethod,
         orderType: "pos",
+        discount: discount,
+        note: note,
+        subtotal: subtotal.toFixed(2),
         items: cart.map((item) => ({
           name: item.medicine_name,
           category: item.category_name,
@@ -122,6 +135,9 @@ function POSPage() {
         phone: customerPhone || "N/A",
         address: "In-store purchase",
         paymentMethod,
+        discount,
+        note,
+        subtotal: subtotal.toFixed(2),
         items: cart.map((item) => ({
           name: item.medicine_name,
           category: item.category_name,
@@ -141,6 +157,8 @@ function POSPage() {
       setCart([]);
       setCustomerName("");
       setCustomerPhone("");
+      setDiscount(0);
+      setNote("");
     } catch (err) {
       console.error(err);
     }
@@ -152,10 +170,25 @@ function POSPage() {
     setLastOrder(null);
   }
 
+  const filteredHistory = salesHistory.filter((sale) =>
+    sale.name?.toLowerCase().includes(historySearch.toLowerCase()) ||
+    sale.phone?.includes(historySearch) ||
+    sale.id?.toLowerCase().includes(historySearch.toLowerCase())
+  );
+
+  const todaySales = salesHistory.filter((sale) => {
+    const date = sale.createdAt?.toDate?.();
+    if (!date) return false;
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  });
+
+  const todayRevenue = todaySales.reduce((sum, sale) => sum + parseFloat(sale.total || 0), 0);
+
   if (!user) {
     return (
       <div style={styles.centered}>
-        <p style={styles.loadingText}>⏳ Loading...</p>
+        <p style={{ fontSize: "18px", color: "#94a3b8" }}>⏳ Loading...</p>
       </div>
     );
   }
@@ -163,51 +196,86 @@ function POSPage() {
   if (user.email !== ADMIN_EMAIL) {
     return (
       <div style={styles.centered}>
-        <p style={styles.deniedIcon}>🚫</p>
-        <h2 style={styles.deniedTitle}>Access Denied</h2>
-        <p style={styles.deniedText}>You must be logged in as admin to use POS.</p>
+        <p style={{ fontSize: "64px" }}>🚫</p>
+        <h2 style={{ color: "#dc2626", fontSize: "28px", margin: "16px 0 8px" }}>Access Denied</h2>
+        <p style={{ color: "#64748b" }}>Admin access required.</p>
       </div>
     );
   }
 
   return (
     <div style={styles.page}>
+      {/* Header */}
       <div style={styles.header}>
         <div style={styles.headerLeft}>
-          <span style={styles.headerIcon}>💊</span>
+          <span style={{ fontSize: "28px" }}>💊</span>
           <div>
-            <h1 style={styles.headerTitle}>Sardar Pharmacy POS</h1>
-            <p style={styles.headerSub}>Point of Sale System</p>
+            <h1 style={styles.headerTitle}>Sardar Pharmacy — POS</h1>
+            <p style={styles.headerSub}>Point of Sale System • {new Date().toLocaleDateString("en-BD", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
           </div>
         </div>
-        <div style={styles.headerTabs}>
-          <button
-            style={{ ...styles.headerTab, ...(tab === "sale" ? styles.headerTabActive : {}) }}
-            onClick={() => setTab("sale")}
-          >
-            🏪 New Sale
-          </button>
-          <button
-            style={{ ...styles.headerTab, ...(tab === "history" ? styles.headerTabActive : {}) }}
-            onClick={() => setTab("history")}
-          >
-            📋 Sale History
-          </button>
+        <div style={styles.headerRight}>
+          <div style={styles.todayStats}>
+            <div style={styles.todayStat}>
+              <p style={styles.todayNum}>{todaySales.length}</p>
+              <p style={styles.todayLabel}>Today's Sales</p>
+            </div>
+            <div style={styles.todayDivider} />
+            <div style={styles.todayStat}>
+              <p style={styles.todayNum}>৳{todayRevenue.toFixed(0)}</p>
+              <p style={styles.todayLabel}>Today's Revenue</p>
+            </div>
+          </div>
+          <div style={styles.headerTabs}>
+            <button
+              style={{ ...styles.headerTab, ...(tab === "sale" ? styles.headerTabActive : {}) }}
+              onClick={() => setTab("sale")}
+            >
+              🏪 New Sale
+            </button>
+            <button
+              style={{ ...styles.headerTab, ...(tab === "history" ? styles.headerTabActive : {}) }}
+              onClick={() => setTab("history")}
+            >
+              📋 History
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Sale Tab */}
       {tab === "sale" && (
         <>
           {success && lastOrder ? (
             <div style={styles.successScreen}>
               <div style={styles.successBox}>
-                <p style={styles.successIcon}>✅</p>
+                <p style={{ fontSize: "64px", margin: "0 0 16px" }}>✅</p>
                 <h2 style={styles.successTitle}>Sale Complete!</h2>
-                <p style={styles.successAmt}>৳{lastOrder.total} • {lastOrder.paymentMethod}</p>
-                <p style={styles.successCustomer}>👤 {lastOrder.name} • 📞 {lastOrder.phone}</p>
+                <div style={styles.successDetails}>
+                  <div style={styles.successRow}>
+                    <span>Subtotal</span>
+                    <span>৳{lastOrder.subtotal}</span>
+                  </div>
+                  {lastOrder.discount > 0 && (
+                    <div style={{ ...styles.successRow, color: "#16a34a" }}>
+                      <span>Discount ({lastOrder.discount}%)</span>
+                      <span>-৳{((parseFloat(lastOrder.subtotal) * lastOrder.discount) / 100).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div style={{ ...styles.successRow, ...styles.successTotalRow }}>
+                    <span>Total</span>
+                    <span>৳{lastOrder.total}</span>
+                  </div>
+                </div>
+                <p style={{ color: "#64748b", fontSize: "14px", margin: "0 0 8px" }}>
+                  👤 {lastOrder.name} • 📞 {lastOrder.phone}
+                </p>
+                <p style={{ color: "#64748b", fontSize: "14px", margin: "0 0 24px" }}>
+                  💳 {lastOrder.paymentMethod}
+                </p>
                 <div style={styles.receiptBtns}>
-                  <button style={styles.printBtn} onClick={() => printReceipt(lastOrder)}>🖨️ Print Receipt</button>
-                  <button style={styles.downloadBtn} onClick={() => downloadReceipt(lastOrder)}>📥 Download PDF</button>
+                  <button style={styles.printBtn} onClick={() => printReceipt(lastOrder)}>🖨️ Print</button>
+                  <button style={styles.downloadBtn} onClick={() => downloadReceipt(lastOrder)}>📥 PDF</button>
                   <button style={styles.whatsappBtn} onClick={() => whatsappReceipt(lastOrder)}>💬 WhatsApp</button>
                 </div>
                 <button style={styles.newSaleBtn} onClick={newSale}>+ New Sale</button>
@@ -215,12 +283,14 @@ function POSPage() {
             </div>
           ) : (
             <div style={styles.saleLayout}>
+              {/* Left Panel */}
               <div style={styles.leftPanel}>
+                {/* Search */}
                 <div style={styles.section}>
                   <h3 style={styles.sectionTitle}>🔍 Search Medicine</h3>
                   <input
                     type="text"
-                    placeholder="Type medicine name or generic..."
+                    placeholder="Type medicine name, generic or category..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     style={styles.searchInput}
@@ -230,41 +300,54 @@ function POSPage() {
                     <div style={styles.suggestions}>
                       {filtered.map((med, i) => (
                         <button key={i} style={styles.suggestion} onClick={() => addToCart(med)}>
-                          <span style={styles.suggestionEmoji}>{getMedicineEmoji(med.category_name)}</span>
-                          <div style={styles.suggestionInfo}>
-                            <p style={styles.suggestionName}>{med.medicine_name}</p>
-                            <p style={styles.suggestionDetail}>
+                          <span style={{ fontSize: "24px", minWidth: "32px" }}>{getMedicineEmoji(med.category_name)}</span>
+                          <div style={{ flex: 1 }}>
+                            <p style={{ fontSize: "14px", fontWeight: "700", color: "#1e293b", margin: 0 }}>{med.medicine_name}</p>
+                            <p style={{ fontSize: "12px", color: "#94a3b8", margin: "2px 0 0 0" }}>
                               {med.generic_name} • {med.strength} • {getUnitLabel(med)}
                             </p>
                           </div>
-                          <span style={styles.suggestionPrice}>৳{med.price}</span>
+                          <div style={{ textAlign: "right" }}>
+                            <p style={{ fontSize: "15px", fontWeight: "800", color: "#1e40af", margin: 0 }}>৳{med.price}</p>
+                            <p style={{ fontSize: "11px", color: "#94a3b8", margin: "2px 0 0 0" }}>{med.category_name}</p>
+                          </div>
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
 
+                {/* Customer */}
                 <div style={styles.section}>
-                  <h3 style={styles.sectionTitle}>👤 Customer Info (Optional)</h3>
-                  <input
-                    type="text"
-                    placeholder="Customer name"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    style={styles.input}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Phone number (for WhatsApp receipt)"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    style={styles.input}
+                  <h3 style={styles.sectionTitle}>👤 Customer Info</h3>
+                  <div style={styles.inputRow}>
+                    <input
+                      type="text"
+                      placeholder="Customer name (optional)"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      style={styles.input}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Phone (for WhatsApp)"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                      style={styles.input}
+                    />
+                  </div>
+                  <textarea
+                    placeholder="Note (optional)"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    style={styles.textarea}
                   />
                   <div style={styles.paymentOptions}>
                     {[
                       { id: "cash", label: "💵 Cash" },
                       { id: "bkash", label: "📱 bKash" },
                       { id: "nagad", label: "📱 Nagad" },
+                      { id: "card", label: "💳 Card" },
                     ].map((method) => (
                       <button
                         key={method.id}
@@ -273,6 +356,7 @@ function POSPage() {
                           ...styles.paymentBtn,
                           backgroundColor: paymentMethod === method.id ? "#1e40af" : "#f1f5f9",
                           color: paymentMethod === method.id ? "white" : "#1e293b",
+                          border: paymentMethod === method.id ? "2px solid #1e40af" : "2px solid transparent",
                         }}
                       >
                         {method.label}
@@ -282,35 +366,47 @@ function POSPage() {
                 </div>
               </div>
 
+              {/* Right Panel - Cart */}
               <div style={styles.rightPanel}>
-                <h3 style={styles.sectionTitle}>
-                  🛒 Cart {cart.length > 0 && <span style={styles.cartCount}>{cart.length} items</span>}
-                </h3>
+                <div style={styles.cartHeader}>
+                  <h3 style={styles.sectionTitle}>
+                    🛒 Cart {cart.length > 0 && <span style={styles.cartBadge}>{cart.length}</span>}
+                  </h3>
+                  {cart.length > 0 && (
+                    <button style={styles.clearCartBtn} onClick={() => setCart([])}>Clear</button>
+                  )}
+                </div>
 
                 {cart.length === 0 ? (
                   <div style={styles.emptyCart}>
-                    <p style={styles.emptyCartIcon}>🛒</p>
-                    <p style={styles.emptyCartText}>Search and add medicines above</p>
+                    <p style={{ fontSize: "48px", margin: "0 0 12px" }}>🛒</p>
+                    <p style={{ fontSize: "15px", color: "#94a3b8" }}>Search and add medicines</p>
                   </div>
                 ) : (
                   <>
                     <div style={styles.cartItems}>
                       {cart.map((item, i) => (
                         <div key={i} style={styles.cartItem}>
-                          <span style={styles.cartEmoji}>{getMedicineEmoji(item.category_name)}</span>
-                          <div style={styles.cartInfo}>
+                          <span style={{ fontSize: "22px", minWidth: "28px" }}>{getMedicineEmoji(item.category_name)}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={styles.cartName}>{item.medicine_name}</p>
                             <p style={styles.cartDetail}>
-                              ৳{item.price} / {getUnitShort(item)}
-                              {item.unit_size > 1 ? ` • ${item.unit}` : ""}
+                              ৳{item.price}/{getUnitShort(item)}
+                              {item.unit_size > 1 ? ` • Pack of ${item.unit_size}` : ""}
                             </p>
                           </div>
                           <div style={styles.cartQty}>
                             <button style={styles.qtyBtn} onClick={() => updateQty(item.slug, item.quantity - 1)}>−</button>
-                            <span style={styles.qtyNum}>{item.quantity}</span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => updateQty(item.slug, e.target.value)}
+                              style={styles.qtyInput}
+                            />
                             <button style={styles.qtyBtn} onClick={() => updateQty(item.slug, item.quantity + 1)}>+</button>
                           </div>
-                          <div style={styles.cartRight}>
+                          <div style={{ textAlign: "right", minWidth: "60px" }}>
                             <p style={styles.cartTotal}>৳{(parseFloat(item.price) * item.quantity).toFixed(2)}</p>
                             <button style={styles.removeBtn} onClick={() => removeFromCart(item.slug)}>🗑️</button>
                           </div>
@@ -318,7 +414,47 @@ function POSPage() {
                       ))}
                     </div>
 
+                    {/* Discount */}
+                    <div style={styles.discountRow}>
+                      <label style={styles.discountLabel}>Discount %</label>
+                      <div style={styles.discountControls}>
+                        {[0, 5, 10, 15, 20].map((d) => (
+                          <button
+                            key={d}
+                            onClick={() => setDiscount(d)}
+                            style={{
+                              ...styles.discountBtn,
+                              backgroundColor: discount === d ? "#1e40af" : "#f1f5f9",
+                              color: discount === d ? "white" : "#1e293b",
+                            }}
+                          >
+                            {d}%
+                          </button>
+                        ))}
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={discount}
+                          onChange={(e) => setDiscount(parseInt(e.target.value) || 0)}
+                          style={styles.discountInput}
+                          placeholder="Custom"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Summary */}
                     <div style={styles.cartFooter}>
+                      <div style={styles.summaryRow}>
+                        <span style={styles.summaryLabel}>Subtotal</span>
+                        <span style={styles.summaryValue}>৳{subtotal.toFixed(2)}</span>
+                      </div>
+                      {discount > 0 && (
+                        <div style={{ ...styles.summaryRow, color: "#16a34a" }}>
+                          <span>Discount ({discount}%)</span>
+                          <span>-৳{discountAmt.toFixed(2)}</span>
+                        </div>
+                      )}
                       <div style={styles.totalRow}>
                         <span style={styles.totalLabel}>Total</span>
                         <span style={styles.totalAmt}>৳{total.toFixed(2)}</span>
@@ -332,7 +468,7 @@ function POSPage() {
                         }}
                         disabled={loading}
                       >
-                        {loading ? "Processing..." : "✅ Complete Sale →"}
+                        {loading ? "Processing..." : `✅ Complete Sale — ৳${total.toFixed(2)}`}
                       </button>
                     </div>
                   </>
@@ -343,47 +479,70 @@ function POSPage() {
         </>
       )}
 
+      {/* History Tab */}
       {tab === "history" && (
         <div style={styles.historyPanel}>
           <div style={styles.historyHeader}>
-            <h3 style={styles.sectionTitle}>📋 POS Sale History</h3>
-            <button style={styles.refreshBtn} onClick={fetchHistory}>🔄 Refresh</button>
+            <div>
+              <h3 style={styles.sectionTitle}>📋 POS Sale History</h3>
+              <p style={{ color: "#64748b", fontSize: "13px", margin: "-8px 0 0 0" }}>
+                {salesHistory.length} total sales • ৳{salesHistory.reduce((s, o) => s + parseFloat(o.total || 0), 0).toFixed(0)} total revenue
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: "10px" }}>
+              <input
+                type="text"
+                placeholder="Search by name, phone, ID..."
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                style={styles.historySearchInput}
+              />
+              <button style={styles.refreshBtn} onClick={fetchHistory}>🔄 Refresh</button>
+            </div>
           </div>
 
           {historyLoading ? (
             <div style={styles.centered}>
-              <p style={styles.loadingText}>⏳ Loading sales...</p>
+              <p style={{ fontSize: "18px", color: "#94a3b8" }}>⏳ Loading...</p>
             </div>
-          ) : salesHistory.length === 0 ? (
+          ) : filteredHistory.length === 0 ? (
             <div style={styles.centered}>
-              <p style={styles.emptyCartIcon}>📋</p>
-              <p style={styles.emptyCartText}>No POS sales yet</p>
+              <p style={{ fontSize: "48px" }}>📋</p>
+              <p style={{ color: "#94a3b8", fontSize: "15px" }}>No sales found</p>
             </div>
           ) : (
             <div style={styles.historyGrid}>
-              {salesHistory.map((sale) => (
+              {filteredHistory.map((sale) => (
                 <div key={sale.id} style={styles.historyCard}>
                   <div style={styles.historyCardHeader}>
                     <div>
                       <p style={styles.historyId}>#{sale.id.slice(0, 8).toUpperCase()}</p>
                       <p style={styles.historyDate}>📅 {sale.createdAt?.toDate?.().toLocaleString()}</p>
                     </div>
-                    <span style={styles.historyTotal}>৳{sale.total}</span>
+                    <div style={{ textAlign: "right" }}>
+                      <p style={styles.historyTotal}>৳{sale.total}</p>
+                      {sale.discount > 0 && (
+                        <p style={{ fontSize: "11px", color: "#16a34a", margin: 0 }}>
+                          {sale.discount}% off
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <p style={styles.historyCustomer}>👤 {sale.name} • 📞 {sale.phone}</p>
                   <p style={styles.historyPayment}>💳 {sale.paymentMethod}</p>
+                  {sale.note && <p style={styles.historyNote}>📝 {sale.note}</p>}
                   <div style={styles.historyItems}>
                     {sale.items?.map((item, i) => (
-                      <p key={i} style={styles.historyItem}>
-                        {getMedicineEmoji(item.category)} {item.name}
-                        {item.unit_size > 1 ? ` (${item.unit})` : ""} ×{item.quantity} — ৳{(parseFloat(item.price) * item.quantity).toFixed(2)}
-                      </p>
+                      <div key={i} style={styles.historyItemRow}>
+                        <span>{getMedicineEmoji(item.category)} {item.name}{item.unit_size > 1 ? ` (Pack of ${item.unit_size})` : ""}</span>
+                        <span>×{item.quantity} = ৳{(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+                      </div>
                     ))}
                   </div>
                   <div style={styles.historyBtns}>
                     <button style={styles.printBtn} onClick={() => printReceipt({ ...sale, createdAt: sale.createdAt?.toDate?.().toLocaleString() })}>🖨️ Print</button>
                     <button style={styles.downloadBtn} onClick={() => downloadReceipt({ ...sale, createdAt: sale.createdAt?.toDate?.().toLocaleString() })}>📥 PDF</button>
-                    <button style={styles.whatsappBtn} onClick={() => whatsappReceipt({ ...sale, createdAt: sale.createdAt?.toDate?.().toLocaleString() })}>💬 WhatsApp</button>
+                    <button style={styles.whatsappBtn} onClick={() => whatsappReceipt({ ...sale, createdAt: sale.createdAt?.toDate?.().toLocaleString() })}>💬 WA</button>
                   </div>
                 </div>
               ))}
@@ -396,11 +555,7 @@ function POSPage() {
 }
 
 const styles = {
-  page: {
-    minHeight: "100vh",
-    backgroundColor: "#f8fafc",
-    fontFamily: "Inter, sans-serif",
-  },
+  page: { minHeight: "100vh", backgroundColor: "#f1f5f9", fontFamily: "Inter, sans-serif" },
   header: {
     display: "flex",
     justifyContent: "space-between",
@@ -408,31 +563,25 @@ const styles = {
     background: "linear-gradient(135deg, #0f172a, #1e293b)",
     padding: "16px 28px",
     flexWrap: "wrap",
-    gap: "12px",
+    gap: "16px",
   },
-  headerLeft: {
+  headerLeft: { display: "flex", alignItems: "center", gap: "12px" },
+  headerTitle: { color: "white", fontSize: "20px", fontWeight: "800", margin: 0 },
+  headerSub: { color: "rgba(255,255,255,0.5)", fontSize: "12px", margin: 0 },
+  headerRight: { display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" },
+  todayStats: {
     display: "flex",
     alignItems: "center",
-    gap: "12px",
+    gap: "16px",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    padding: "10px 20px",
+    borderRadius: "12px",
   },
-  headerIcon: {
-    fontSize: "32px",
-  },
-  headerTitle: {
-    color: "white",
-    fontSize: "20px",
-    fontWeight: "800",
-    margin: 0,
-  },
-  headerSub: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: "12px",
-    margin: 0,
-  },
-  headerTabs: {
-    display: "flex",
-    gap: "8px",
-  },
+  todayStat: { textAlign: "center" },
+  todayNum: { color: "white", fontSize: "20px", fontWeight: "800", margin: 0 },
+  todayLabel: { color: "rgba(255,255,255,0.6)", fontSize: "11px", margin: 0 },
+  todayDivider: { width: "1px", height: "30px", backgroundColor: "rgba(255,255,255,0.2)" },
+  headerTabs: { display: "flex", gap: "8px" },
   headerTab: {
     padding: "10px 20px",
     border: "none",
@@ -442,28 +591,19 @@ const styles = {
     fontWeight: "600",
     backgroundColor: "rgba(255,255,255,0.1)",
     color: "white",
-    transition: "all 0.2s",
   },
-  headerTabActive: {
-    backgroundColor: "white",
-    color: "#1e293b",
-  },
+  headerTabActive: { backgroundColor: "white", color: "#1e293b" },
   saleLayout: {
     display: "flex",
     gap: "20px",
     padding: "20px",
-    maxWidth: "1200px",
+    maxWidth: "1400px",
     margin: "0 auto",
-    minHeight: "calc(100vh - 80px)",
+    minHeight: "calc(100vh - 90px)",
   },
-  leftPanel: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    gap: "20px",
-  },
+  leftPanel: { flex: 1, display: "flex", flexDirection: "column", gap: "16px" },
   rightPanel: {
-    width: "420px",
+    width: "440px",
     backgroundColor: "white",
     borderRadius: "16px",
     padding: "20px",
@@ -480,15 +620,10 @@ const styles = {
     padding: "20px",
     boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
   },
-  sectionTitle: {
-    fontSize: "16px",
-    fontWeight: "700",
-    color: "#1e293b",
-    marginBottom: "14px",
-  },
+  sectionTitle: { fontSize: "16px", fontWeight: "700", color: "#1e293b", marginBottom: "14px" },
   searchInput: {
     width: "100%",
-    padding: "13px 16px",
+    padding: "14px 16px",
     borderRadius: "12px",
     border: "2px solid #2563eb",
     fontSize: "15px",
@@ -502,7 +637,7 @@ const styles = {
     borderRadius: "12px",
     border: "1px solid #e2e8f0",
     overflow: "hidden",
-    boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.1)",
   },
   suggestion: {
     display: "flex",
@@ -516,73 +651,84 @@ const styles = {
     cursor: "pointer",
     textAlign: "left",
   },
-  suggestionEmoji: { fontSize: "24px", minWidth: "32px" },
-  suggestionInfo: { flex: 1 },
-  suggestionName: { fontSize: "14px", fontWeight: "700", color: "#1e293b", margin: 0 },
-  suggestionDetail: { fontSize: "12px", color: "#94a3b8", margin: "2px 0 0 0" },
-  suggestionPrice: { fontSize: "15px", fontWeight: "800", color: "#1e40af" },
+  inputRow: { display: "flex", gap: "10px", marginBottom: "10px" },
   input: {
+    flex: 1,
+    padding: "12px 16px",
+    borderRadius: "12px",
+    border: "2px solid #e2e8f0",
+    fontSize: "14px",
+    outline: "none",
+    boxSizing: "border-box",
+    fontFamily: "Inter, sans-serif",
+  },
+  textarea: {
     width: "100%",
     padding: "12px 16px",
     borderRadius: "12px",
     border: "2px solid #e2e8f0",
-    fontSize: "15px",
+    fontSize: "14px",
     outline: "none",
     boxSizing: "border-box",
-    marginBottom: "10px",
+    resize: "none",
+    height: "60px",
+    marginBottom: "12px",
     fontFamily: "Inter, sans-serif",
   },
   paymentOptions: { display: "flex", gap: "8px", flexWrap: "wrap" },
   paymentBtn: {
     padding: "10px 16px",
     borderRadius: "10px",
-    border: "none",
     fontSize: "14px",
     fontWeight: "600",
     cursor: "pointer",
+    transition: "all 0.2s",
   },
-  cartCount: {
-    fontSize: "13px",
+  cartHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" },
+  cartBadge: {
     backgroundColor: "#eff6ff",
     color: "#2563eb",
-    padding: "3px 10px",
+    padding: "2px 8px",
     borderRadius: "50px",
-    marginLeft: "8px",
+    fontSize: "13px",
+    marginLeft: "6px",
+  },
+  clearCartBtn: {
+    padding: "6px 12px",
+    backgroundColor: "#fee2e2",
+    color: "#dc2626",
+    border: "none",
+    borderRadius: "8px",
+    fontSize: "13px",
     fontWeight: "600",
+    cursor: "pointer",
   },
-  emptyCart: {
-    textAlign: "center",
-    padding: "40px 20px",
-  },
-  emptyCartIcon: { fontSize: "48px", marginBottom: "12px" },
-  emptyCartText: { fontSize: "15px", color: "#94a3b8", fontWeight: "500" },
-  cartItems: { marginBottom: "16px" },
+  emptyCart: { textAlign: "center", padding: "40px 20px", flex: 1 },
+  cartItems: { marginBottom: "12px", maxHeight: "320px", overflowY: "auto" },
   cartItem: {
     display: "flex",
     alignItems: "center",
-    gap: "10px",
-    padding: "12px",
+    gap: "8px",
+    padding: "10px",
     backgroundColor: "#f8fafc",
-    borderRadius: "12px",
-    marginBottom: "8px",
+    borderRadius: "10px",
+    marginBottom: "6px",
     border: "1px solid #f1f5f9",
   },
-  cartEmoji: { fontSize: "24px", minWidth: "32px" },
-  cartInfo: { flex: 1 },
-  cartName: { fontSize: "13px", fontWeight: "700", color: "#1e293b", margin: 0 },
+  cartName: { fontSize: "13px", fontWeight: "700", color: "#1e293b", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
   cartDetail: { fontSize: "11px", color: "#94a3b8", margin: "2px 0 0 0" },
   cartQty: {
     display: "flex",
     alignItems: "center",
-    gap: "6px",
+    gap: "4px",
     backgroundColor: "#eff6ff",
-    borderRadius: "10px",
-    padding: "4px",
+    borderRadius: "8px",
+    padding: "3px",
   },
   qtyBtn: {
-    width: "28px",
-    height: "28px",
-    borderRadius: "8px",
+    width: "26px",
+    height: "26px",
+    borderRadius: "6px",
     border: "none",
     backgroundColor: "#2563eb",
     color: "white",
@@ -593,21 +739,39 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
   },
-  qtyNum: { fontSize: "14px", fontWeight: "800", color: "#1e40af", minWidth: "20px", textAlign: "center" },
-  cartRight: { textAlign: "right" },
-  cartTotal: { fontSize: "14px", fontWeight: "800", color: "#1e40af", margin: "0 0 4px 0" },
-  removeBtn: { background: "none", border: "none", cursor: "pointer", fontSize: "16px", padding: 0 },
-  cartFooter: { borderTop: "1px solid #e2e8f0", paddingTop: "16px" },
-  totalRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: "16px",
-    padding: "12px 16px",
-    backgroundColor: "#f8fafc",
-    borderRadius: "12px",
+  qtyInput: {
+    width: "40px",
+    textAlign: "center",
+    border: "none",
+    backgroundColor: "white",
+    fontSize: "14px",
+    fontWeight: "700",
+    color: "#1e40af",
+    outline: "none",
+    borderRadius: "4px",
+    padding: "2px",
   },
-  totalLabel: { fontSize: "16px", fontWeight: "600", color: "#64748b" },
+  cartTotal: { fontSize: "13px", fontWeight: "800", color: "#1e40af", margin: "0 0 2px 0" },
+  removeBtn: { background: "none", border: "none", cursor: "pointer", fontSize: "14px", padding: 0 },
+  discountRow: { marginBottom: "12px", padding: "12px", backgroundColor: "#f8fafc", borderRadius: "10px" },
+  discountLabel: { fontSize: "13px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "8px" },
+  discountControls: { display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" },
+  discountBtn: { padding: "6px 10px", border: "none", borderRadius: "8px", fontSize: "13px", fontWeight: "600", cursor: "pointer" },
+  discountInput: {
+    width: "70px",
+    padding: "6px 8px",
+    borderRadius: "8px",
+    border: "2px solid #e2e8f0",
+    fontSize: "13px",
+    outline: "none",
+    textAlign: "center",
+  },
+  cartFooter: { borderTop: "1px solid #e2e8f0", paddingTop: "12px" },
+  summaryRow: { display: "flex", justifyContent: "space-between", fontSize: "14px", color: "#64748b", marginBottom: "6px" },
+  summaryLabel: { color: "#64748b" },
+  summaryValue: { fontWeight: "600", color: "#1e293b" },
+  totalRow: { display: "flex", justifyContent: "space-between", alignItems: "center", margin: "10px 0 14px", padding: "10px 14px", backgroundColor: "#eff6ff", borderRadius: "10px" },
+  totalLabel: { fontSize: "16px", fontWeight: "700", color: "#1e40af" },
   totalAmt: { fontSize: "24px", fontWeight: "800", color: "#1e40af" },
   checkoutBtn: {
     width: "100%",
@@ -620,52 +784,35 @@ const styles = {
     fontWeight: "700",
     boxShadow: "0 4px 14px rgba(37,99,235,0.35)",
     fontFamily: "Inter, sans-serif",
-    cursor: "pointer",
   },
-  successScreen: {
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: "calc(100vh - 80px)",
-    padding: "20px",
-  },
-  successBox: {
-    backgroundColor: "white",
-    borderRadius: "24px",
-    padding: "48px 40px",
-    textAlign: "center",
-    maxWidth: "480px",
-    width: "100%",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.1)",
-  },
-  successIcon: { fontSize: "64px", marginBottom: "16px" },
-  successTitle: { fontSize: "28px", fontWeight: "800", color: "#1e293b", marginBottom: "8px" },
-  successAmt: { fontSize: "20px", fontWeight: "700", color: "#1e40af", marginBottom: "6px" },
-  successCustomer: { fontSize: "14px", color: "#64748b", marginBottom: "24px" },
+  successScreen: { display: "flex", justifyContent: "center", alignItems: "center", minHeight: "calc(100vh - 90px)", padding: "20px" },
+  successBox: { backgroundColor: "white", borderRadius: "24px", padding: "48px 40px", textAlign: "center", maxWidth: "480px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.1)" },
+  successTitle: { fontSize: "28px", fontWeight: "800", color: "#1e293b", marginBottom: "20px" },
+  successDetails: { backgroundColor: "#f8fafc", borderRadius: "12px", padding: "16px", marginBottom: "16px", textAlign: "left" },
+  successRow: { display: "flex", justifyContent: "space-between", fontSize: "15px", color: "#64748b", marginBottom: "8px" },
+  successTotalRow: { borderTop: "1px solid #e2e8f0", paddingTop: "10px", marginTop: "4px", fontWeight: "800", fontSize: "18px", color: "#1e40af" },
   receiptBtns: { display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center", marginBottom: "16px" },
   printBtn: { padding: "12px 18px", backgroundColor: "#1e293b", color: "white", border: "none", borderRadius: "12px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
   downloadBtn: { padding: "12px 18px", backgroundColor: "#1e40af", color: "white", border: "none", borderRadius: "12px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
   whatsappBtn: { padding: "12px 18px", backgroundColor: "#16a34a", color: "white", border: "none", borderRadius: "12px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
   newSaleBtn: { width: "100%", padding: "14px", background: "linear-gradient(135deg, #1e40af, #2563eb)", color: "white", border: "none", borderRadius: "12px", fontSize: "16px", fontWeight: "700", cursor: "pointer" },
-  historyPanel: { padding: "20px", maxWidth: "1200px", margin: "0 auto" },
-  historyHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" },
+  historyPanel: { padding: "20px", maxWidth: "1400px", margin: "0 auto" },
+  historyHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px", flexWrap: "wrap", gap: "12px" },
+  historySearchInput: { padding: "10px 16px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", outline: "none", width: "260px", fontFamily: "Inter, sans-serif" },
   refreshBtn: { padding: "10px 18px", backgroundColor: "#eff6ff", color: "#2563eb", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "600", cursor: "pointer" },
-  historyGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "16px" },
+  historyGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(360px, 1fr))", gap: "16px" },
   historyCard: { backgroundColor: "white", borderRadius: "16px", padding: "18px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", border: "1px solid #f1f5f9" },
   historyCardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" },
   historyId: { fontWeight: "800", color: "#1e293b", fontSize: "15px", margin: 0 },
   historyDate: { fontSize: "12px", color: "#94a3b8", margin: "4px 0 0 0" },
-  historyTotal: { fontSize: "20px", fontWeight: "800", color: "#1e40af" },
+  historyTotal: { fontSize: "20px", fontWeight: "800", color: "#1e40af", margin: 0 },
   historyCustomer: { fontSize: "13px", color: "#64748b", margin: "4px 0" },
-  historyPayment: { fontSize: "13px", color: "#64748b", margin: "4px 0 10px 0" },
+  historyPayment: { fontSize: "13px", color: "#64748b", margin: "4px 0 8px 0" },
+  historyNote: { fontSize: "13px", color: "#92400e", backgroundColor: "#fffbeb", padding: "6px 10px", borderRadius: "8px", margin: "4px 0 8px 0" },
   historyItems: { backgroundColor: "#f8fafc", borderRadius: "10px", padding: "10px 12px", marginBottom: "12px", border: "1px solid #f1f5f9" },
-  historyItem: { fontSize: "13px", color: "#1e293b", margin: "4px 0", fontWeight: "500" },
+  historyItemRow: { display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#1e293b", padding: "4px 0", borderBottom: "1px solid #f1f5f9", fontWeight: "500" },
   historyBtns: { display: "flex", gap: "8px", flexWrap: "wrap" },
-  centered: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", textAlign: "center" },
-  loadingText: { fontSize: "18px", color: "#94a3b8" },
-  deniedIcon: { fontSize: "64px", marginBottom: "16px" },
-  deniedTitle: { fontSize: "28px", fontWeight: "800", color: "#dc2626", marginBottom: "12px" },
-  deniedText: { fontSize: "15px", color: "#64748b" },
+  centered: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", textAlign: "center", padding: "20px" },
 };
 
 export default POSPage;

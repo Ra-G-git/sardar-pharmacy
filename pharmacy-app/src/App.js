@@ -2,6 +2,7 @@ import Navbar from "./Navbar";
 import Hero from "./Hero";
 import MedicineList from "./MedicineList";
 import { CartProvider } from "./CartContext";
+import "./App.css";
 
 function App() {
   return (

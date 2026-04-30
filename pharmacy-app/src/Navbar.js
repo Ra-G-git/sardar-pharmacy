@@ -7,7 +7,6 @@ import Auth from "./Auth";
 import AdminDashboard from "./AdminDashboard";
 import MyOrders from "./MyOrders";
 import PrescriptionUpload from "./PrescriptionUpload";
-import POS from "./POS";
 
 function Navbar() {
   const { cart } = useCart();
@@ -19,7 +18,6 @@ function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [user, setUser] = useState(null);
   const [scrolled, setScrolled] = useState(false);
-  const [posOpen, setPosOpen] = useState(false);
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -46,20 +44,48 @@ function Navbar() {
   return (
     <>
       <nav style={{
-        ...styles.navbar,
-        boxShadow: scrolled ? "0 4px 20px rgba(0,0,0,0.15)" : "none",
-      }}>
-        <div style={styles.logoSection}>
-          <span style={styles.logoIcon}>💊</span>
-          <div>
-            <h2 style={styles.logoText}>Sardar Pharmacy</h2>
-            <p style={styles.logoSub}>Mirpur, Dhaka</p>
+          ...styles.navbar,
+          boxShadow: scrolled ? "0 4px 20px rgba(0,0,0,0.15)" : "none",
+        }}>
+          <div style={styles.logoSection}>
+            <span style={styles.logoIcon}>💊</span>
+            <div>
+              <h2 style={styles.logoText}>Sardar Pharmacy</h2>
+              <p style={styles.logoSub}>Mirpur, Dhaka</p>
+            </div>
           </div>
-        </div>
-        <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
-          {menuOpen ? "✕" : "☰"}
-        </button>
-      </nav>
+
+          {/* Desktop Nav */}
+          <div className="desktop-nav">
+            <button style={styles.navBtn} onClick={() => document.getElementById("home").scrollIntoView({ behavior: "smooth" })}>Home</button>
+            <button style={styles.navBtn} onClick={() => document.getElementById("medicines").scrollIntoView({ behavior: "smooth" })}>Medicines</button>
+            <button style={styles.navBtn} onClick={() => setOrdersOpen(true)}>Orders</button>
+            <button style={styles.navBtn} onClick={() => document.getElementById("contact").scrollIntoView({ behavior: "smooth" })}>Contact</button>
+            <button style={styles.prescriptionBtn} onClick={() => setPrescriptionOpen(true)}>📋 Prescription</button>
+            {user && user.email === "razeesardar@gmail.com" && (
+              <>
+                <button style={styles.adminBtn} onClick={() => setAdminOpen(true)}>🔧 Admin</button>
+                <button style={styles.adminBtn} onClick={() => window.open("/pos", "_blank")}>🏪 POS</button>
+              </>
+            )}
+            {user ? (
+              <>
+                <span style={styles.userEmail}>👤 {user.email}</span>
+                <button style={styles.logoutBtn} onClick={handleLogout}>Logout</button>
+              </>
+            ) : (
+              <button style={styles.loginBtn} onClick={() => setAuthOpen(true)}>Login / Register</button>
+            )}
+            <button style={styles.cartBtn} onClick={() => setCartOpen(true)}>
+              🛒 {totalItems > 0 && <span style={styles.badge}>{totalItems}</span>}
+            </button>
+          </div>
+
+          {/* Mobile Hamburger */}
+          <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
+            {menuOpen ? "✕" : "☰"}
+          </button>
+        </nav>
 
       {menuOpen && (
         <div style={styles.mobileMenu}>
@@ -77,22 +103,14 @@ function Navbar() {
           ))}
 
           {user && user.email === "razeesardar@gmail.com" && (
-            <button style={{ ...styles.mobileLink, color: "#fbbf24" }} onClick={() => { setAdminOpen(true); close(); }}>
-              <span style={styles.mobileLinkIcon}>🔧</span> Admin Dashboard
-            </button>
-          )}
-          {user && user.email === "razeesardar@gmail.com" && (
-            <button style={{ ...styles.mobileLink, color: "#fbbf24" }} onClick={() => { setPosOpen(true); close(); }}>
-              <span style={styles.mobileLinkIcon}>🏪</span> POS
-            </button>
-          )}
-          {user && user.email === "razeesardar@gmail.com" && (
-            <button
-              style={{ ...styles.mobileLink, color: "#fbbf24" }}
-              onClick={() => { window.open("/pos", "_blank"); close(); }}
-            >
-              <span style={styles.mobileLinkIcon}>🏪</span> POS System
-            </button>
+            <>
+              <button style={{ ...styles.mobileLink, color: "#fbbf24" }} onClick={() => { setAdminOpen(true); close(); }}>
+                <span style={styles.mobileLinkIcon}>🔧</span> Admin Dashboard
+              </button>
+              <button style={{ ...styles.mobileLink, color: "#fbbf24" }} onClick={() => { window.open("/pos", "_blank"); close(); }}>
+                <span style={styles.mobileLinkIcon}>🏪</span> POS System
+              </button>
+            </>
           )}
 
           <div style={styles.mobileDivider} />
@@ -122,7 +140,6 @@ function Navbar() {
       {adminOpen && <AdminDashboard onClose={() => setAdminOpen(false)} />}
       {ordersOpen && <MyOrders onClose={() => setOrdersOpen(false)} />}
       {prescriptionOpen && <PrescriptionUpload onClose={() => setPrescriptionOpen(false)} />}
-      {posOpen && <POS onClose={() => setPosOpen(false)} />}
     </>
   );
 }
@@ -210,6 +227,81 @@ const styles = {
     padding: "12px 28px",
     margin: 0,
   },
-};
+  navBtn: {
+  color: "white",
+  background: "none",
+  border: "none",
+  fontSize: "15px",
+  cursor: "pointer",
+  fontWeight: "500",
+  },
+  loginBtn: {
+    backgroundColor: "white",
+    color: "#2563eb",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    cursor: "pointer",
+    fontWeight: "700",
+  },
+  logoutBtn: {
+    backgroundColor: "#dc2626",
+    color: "white",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    cursor: "pointer",
+    fontWeight: "700",
+  },
+  userEmail: {
+    color: "white",
+    fontSize: "13px",
+    maxWidth: "150px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  cartBtn: {
+    backgroundColor: "white",
+    color: "#2563eb",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    fontSize: "15px",
+    cursor: "pointer",
+    fontWeight: "700",
+  },
+  badge: {
+    backgroundColor: "#dc2626",
+    color: "white",
+    borderRadius: "50%",
+    padding: "2px 7px",
+    fontSize: "12px",
+    marginLeft: "4px",
+    fontWeight: "bold",
+  },
+  prescriptionBtn: {
+    backgroundColor: "#16a34a",
+    color: "white",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    cursor: "pointer",
+    fontWeight: "700",
+  },
+  adminBtn: {
+    backgroundColor: "#1e293b",
+    color: "white",
+    border: "none",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    cursor: "pointer",
+    fontWeight: "700",
+  },
+  };
 
 export default Navbar;

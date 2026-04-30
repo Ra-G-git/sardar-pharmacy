@@ -19,7 +19,6 @@ button {
   font-family: 'Inter', sans-serif;
 }
 
-/* Hamburger */
 .hamburger {
   display: none;
   background: none;
@@ -29,14 +28,14 @@ button {
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 6px;
-  transition: background 0.2s;
 }
 
-.hamburger:hover {
-  background: rgba(255,255,255,0.15);
+@media (max-width: 768px) {
+  .hamburger {
+    display: block;
+  }
 }
 
-/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -46,7 +45,6 @@ button {
   animation: fadeIn 0.5s ease forwards;
 }
 
-/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -59,9 +57,33 @@ button {
   background: #2563eb;
   border-radius: 10px;
 }
+.desktop-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 
 @media (max-width: 768px) {
+  .desktop-nav {
+    display: none;
+  }
   .hamburger {
     display: block;
+  }
+}
+
+@media (min-width: 769px) {
+  .hamburger {
+    display: none;
+  }
+  .desktop-nav {
+    display: flex;
+  }
+}
+
+@media (min-width: 769px) {
+  .hamburger {
+    display: none;
   }
 }
