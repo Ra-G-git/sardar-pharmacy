@@ -4,7 +4,6 @@ import { auth } from "./firebase";
 import { signOut } from "firebase/auth";
 import Cart from "./Cart";
 import Auth from "./Auth";
-import AdminDashboard from "./AdminDashboard";
 import MyOrders from "./MyOrders";
 import PrescriptionUpload from "./PrescriptionUpload";
 
@@ -12,7 +11,6 @@ function Navbar() {
   const { cart } = useCart();
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [adminOpen, setAdminOpen] = useState(false);
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [prescriptionOpen, setPrescriptionOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -64,7 +62,7 @@ function Navbar() {
             <button style={styles.prescriptionBtn} onClick={() => setPrescriptionOpen(true)}>📋 Prescription</button>
             {user && user.email === "razeesardar@gmail.com" && (
               <>
-                <button style={styles.adminBtn} onClick={() => setAdminOpen(true)}>🔧 Admin</button>
+                <button style={styles.adminBtn} onClick={() => window.open("/admin", "_blank")}>🔧 Admin</button>
                 <button style={styles.adminBtn} onClick={() => window.open("/pos", "_blank")}>🏪 POS</button>
               </>
             )}
@@ -104,7 +102,7 @@ function Navbar() {
 
           {user && user.email === "razeesardar@gmail.com" && (
             <>
-              <button style={{ ...styles.mobileLink, color: "#fbbf24" }} onClick={() => { setAdminOpen(true); close(); }}>
+              <button style={{ ...styles.mobileLink, color: "#fbbf24" }} onClick={() => { window.open("/admin", "_blank"); close(); }}>
                 <span style={styles.mobileLinkIcon}>🔧</span> Admin Dashboard
               </button>
               <button style={{ ...styles.mobileLink, color: "#fbbf24" }} onClick={() => { window.open("/pos", "_blank"); close(); }}>
@@ -137,7 +135,6 @@ function Navbar() {
 
       {cartOpen && <Cart onClose={() => setCartOpen(false)} />}
       {authOpen && <Auth onClose={() => setAuthOpen(false)} />}
-      {adminOpen && <AdminDashboard onClose={() => setAdminOpen(false)} />}
       {ordersOpen && <MyOrders onClose={() => setOrdersOpen(false)} />}
       {prescriptionOpen && <PrescriptionUpload onClose={() => setPrescriptionOpen(false)} />}
     </>
@@ -228,12 +225,12 @@ const styles = {
     margin: 0,
   },
   navBtn: {
-  color: "white",
-  background: "none",
-  border: "none",
-  fontSize: "15px",
-  cursor: "pointer",
-  fontWeight: "500",
+    color: "white",
+    background: "none",
+    border: "none",
+    fontSize: "15px",
+    cursor: "pointer",
+    fontWeight: "500",
   },
   loginBtn: {
     backgroundColor: "white",
@@ -302,6 +299,6 @@ const styles = {
     cursor: "pointer",
     fontWeight: "700",
   },
-  };
+};
 
 export default Navbar;

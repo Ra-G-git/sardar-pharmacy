@@ -281,7 +281,7 @@ export function printReceipt(order) {
         <thead>
           <tr>
             <th>Item</th>
-            <th>Pack</th>
+            <th>Unit</th>
             <th>Qty</th>
             <th>Price</th>
             <th>Total</th>
