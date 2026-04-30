@@ -86,6 +86,14 @@ function Navbar() {
               <span style={styles.mobileLinkIcon}>🏪</span> POS
             </button>
           )}
+          {user && user.email === "razeesardar@gmail.com" && (
+            <button
+              style={{ ...styles.mobileLink, color: "#fbbf24" }}
+              onClick={() => { window.open("/pos", "_blank"); close(); }}
+            >
+              <span style={styles.mobileLinkIcon}>🏪</span> POS System
+            </button>
+          )}
 
           <div style={styles.mobileDivider} />
 
