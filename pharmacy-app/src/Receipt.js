@@ -43,7 +43,6 @@ export function generateReceipt(order) {
   doc.text(`Name: ${order.name || "Walk-in Customer"}`, 110, 60);
   doc.text(`Phone: ${order.phone || "N/A"}`, 110, 67);
 
-  // Address with word wrap
   const addressLines = doc.splitTextToSize(`Address: ${order.address || "N/A"}`, 85);
   doc.text(addressLines, 110, 74);
 
@@ -125,12 +124,151 @@ export function downloadReceipt(order) {
 }
 
 export function printReceipt(order) {
-  const doc = generateReceipt(order);
-  const blob = doc.output("blob");
-  const url = URL.createObjectURL(blob);
-  const win = window.open(url);
+  const itemRows = order.items?.map((item) => `
+    <tr>
+      <td>${item.name}${item.strength ? `<br/><span class="sub">${item.strength}</span>` : ""}</td>
+      <td class="center">${item.quantity}</td>
+      <td class="right">${parseFloat(item.price).toFixed(2)}</td>
+      <td class="right">${(parseFloat(item.price) * item.quantity).toFixed(2)}</td>
+    </tr>
+  `).join("") || "";
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8"/>
+      <title>Receipt</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Courier New', monospace;
+          font-size: 11px;
+          width: 80mm;
+          padding: 6px;
+          color: #000;
+        }
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .bold { font-weight: bold; }
+        .header { text-align: center; margin-bottom: 6px; }
+        .header h1 { font-size: 15px; font-weight: bold; }
+        .header p { font-size: 10px; margin: 1px 0; }
+        .divider {
+          border-top: 1px dashed #000;
+          margin: 6px 0;
+        }
+        .info-row {
+          display: flex;
+          justify-content: space-between;
+          margin: 2px 0;
+          font-size: 10px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 4px 0;
+          font-size: 10px;
+        }
+        thead tr {
+          border-top: 1px solid #000;
+          border-bottom: 1px solid #000;
+        }
+        th { padding: 3px 2px; text-align: left; font-size: 10px; }
+        td { padding: 3px 2px; vertical-align: top; }
+        th:nth-child(2), td:nth-child(2) { text-align: center; }
+        th:nth-child(3), td:nth-child(3),
+        th:nth-child(4), td:nth-child(4) { text-align: right; }
+        tbody tr:last-child { border-bottom: 1px solid #000; }
+        .sub { font-size: 9px; color: #444; }
+        .total-row {
+          display: flex;
+          justify-content: space-between;
+          font-size: 13px;
+          font-weight: bold;
+          margin: 4px 0;
+        }
+        .words {
+          font-size: 9px;
+          color: #444;
+          margin-bottom: 6px;
+        }
+        .footer {
+          text-align: center;
+          font-size: 10px;
+          margin-top: 8px;
+        }
+        @media print {
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+          body { padding: 4px; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>Sardar Pharmacy</h1>
+        <p>10/1 Pallabi, Mirpur-11½, Dhaka-1216</p>
+        <p>Tel: 01559084327 | Open 8AM-11PM</p>
+        <p>---- RECEIPT ----</p>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="info-row"><span>Order ID:</span><span>#${order.id?.slice(0, 8).toUpperCase() || "N/A"}</span></div>
+      <div class="info-row"><span>Date:</span><span>${order.createdAt || new Date().toLocaleString()}</span></div>
+      <div class="info-row"><span>Payment:</span><span>${order.paymentMethod || "Cash"}</span></div>
+      <div class="info-row"><span>Status:</span><span>${order.status || "Pending"}</span></div>
+
+      <div class="divider"></div>
+
+      <div class="info-row"><span>Customer:</span><span>${order.name || "Walk-in"}</span></div>
+      <div class="info-row"><span>Phone:</span><span>${order.phone || "N/A"}</span></div>
+      <div class="info-row"><span>Address:</span><span style="max-width:55mm;text-align:right">${order.address || "N/A"}</span></div>
+
+      <div class="divider"></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Qty</th>
+            <th>Price</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemRows}
+        </tbody>
+      </table>
+
+      <div class="divider"></div>
+
+      <div class="total-row">
+        <span>TOTAL:</span>
+        <span>BDT ${parseFloat(order.total).toFixed(2)}</span>
+      </div>
+      <div class="words">${numberToWords(parseFloat(order.total))} Taka only</div>
+
+      <div class="divider"></div>
+
+      <div class="footer">
+        <p>Thank you for choosing Sardar Pharmacy!</p>
+        <p>For queries call: 01559084327</p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const win = window.open("", "_blank", "width=320,height=600");
+  win.document.write(html);
+  win.document.close();
   win.onload = () => {
+    win.focus();
     win.print();
+    win.close();
   };
 }
 
@@ -163,7 +301,21 @@ ${items}
 _Thank you for choosing Sardar Pharmacy!_`;
 
   const encoded = encodeURIComponent(message);
-  window.open(`https://wa.me/?text=${encoded}`, "_blank");
+
+  // If customer phone exists send directly to their number
+  // Bangladesh numbers: remove leading 0 and add country code 880
+  if (order.phone && order.phone !== "N/A") {
+    let phone = order.phone.trim().replace(/\s+/g, "");
+    if (phone.startsWith("0")) {
+      phone = "880" + phone.slice(1);
+    } else if (!phone.startsWith("880")) {
+      phone = "880" + phone;
+    }
+    window.open(`https://wa.me/${phone}?text=${encoded}`, "_blank");
+  } else {
+    // No number — open WhatsApp without a number so admin can choose
+    window.open(`https://wa.me/?text=${encoded}`, "_blank");
+  }
 }
 
 function numberToWords(num) {
@@ -172,7 +324,6 @@ function numberToWords(num) {
   const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
 
   if (num === 0) return "Zero";
-
   const integer = Math.floor(num);
 
   function convert(n) {

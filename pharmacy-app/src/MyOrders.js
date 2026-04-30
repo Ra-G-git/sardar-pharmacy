@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { auth, db } from "./firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { getMedicineEmoji } from "./medicineUtils";
+import { downloadReceipt, printReceipt, whatsappReceipt } from "./Receipt";
 
 function MyOrders({ onClose }) {
   const [orders, setOrders] = useState([]);
@@ -110,6 +111,40 @@ function MyOrders({ onClose }) {
                       <p style={styles.totalLabel}>Total</p>
                       <p style={styles.totalAmt}>৳{o.total}</p>
                     </div>
+                  </div>
+                  <div style={styles.receiptBtns}>
+                    <button
+                      style={styles.printBtn}
+                      onClick={() => printReceipt({
+                        id: o.id,
+                        name: o.name,
+                        phone: o.phone,
+                        address: o.address,
+                        paymentMethod: o.paymentMethod,
+                        items: o.items,
+                        total: o.total,
+                        status: o.status,
+                        createdAt: o.createdAt?.toDate?.().toLocaleString(),
+                      })}
+                    >
+                      🖨️ Print
+                    </button>
+                    <button
+                      style={styles.downloadBtn}
+                      onClick={() => downloadReceipt({
+                        id: o.id,
+                        name: o.name,
+                        phone: o.phone,
+                        address: o.address,
+                        paymentMethod: o.paymentMethod,
+                        items: o.items,
+                        total: o.total,
+                        status: o.status,
+                        createdAt: o.createdAt?.toDate?.().toLocaleString(),
+                      })}
+                    >
+                      📥 PDF
+                    </button>
                   </div>
                 </div>
               );
@@ -287,6 +322,32 @@ const styles = {
     fontWeight: "800",
     color: "#1e40af",
     margin: 0,
+  },
+  receiptBtns: {
+  display: "flex",
+  gap: "8px",
+  marginTop: "12px",
+  flexWrap: "wrap",
+  },
+  printBtn: {
+    padding: "8px 16px",
+    backgroundColor: "#1e293b",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: "700",
+  },
+  downloadBtn: {
+    padding: "8px 16px",
+    backgroundColor: "#1e40af",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: "700",
   },
 };
 
