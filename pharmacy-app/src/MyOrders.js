@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { auth, db } from "./firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { getMedicineEmoji } from "./medicineUtils";
-import { downloadReceipt, printReceipt, whatsappReceipt } from "./Receipt";
+import { downloadReceipt, printReceipt } from "./Receipt";
 
 function MyOrders({ onClose }) {
   const [orders, setOrders] = useState([]);
