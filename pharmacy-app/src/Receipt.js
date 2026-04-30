@@ -53,22 +53,21 @@ export function generateReceipt(order) {
 
   // Items table
   const tableRows = order.items?.map((item) => {
-      const packInfo = item.unit_size > 1 
-        ? `Pack of ${item.unit_size} (${item.unit})` 
-        : "Per piece";
-      return [
-        item.name,
-        item.category || "",
-        `${item.strength || ""}\n${packInfo}`,
-        item.quantity,
-        `Tk ${parseFloat(item.price).toFixed(2)}`,
-        `Tk ${(parseFloat(item.price) * item.quantity).toFixed(2)}`,
-      ];
-    }) || [];
+    const packInfo = item.unit || "-";
+    return [
+      item.name,
+      item.category || "",
+      item.strength || "",
+      packInfo,
+      item.quantity,
+      `Tk ${parseFloat(item.price).toFixed(2)}`,
+      `Tk ${(parseFloat(item.price) * item.quantity).toFixed(2)}`,
+    ];
+  }) || [];
 
   autoTable(doc, {
     startY: 95,
-    head: [["Medicine", "Category", "Strength/Pack", "Qty", "Unit Price (Tk)", "Total (Tk)"]],
+    head: [["Medicine", "Category", "Strength", "Unit", "Qty", "Unit Price (Tk)", "Total (Tk)"]],
     body: tableRows,
     theme: "striped",
     headStyles: {
@@ -85,12 +84,13 @@ export function generateReceipt(order) {
       fillColor: [239, 246, 255],
     },
     columnStyles: {
-      0: { cellWidth: 50 },
-      1: { cellWidth: 30 },
-      2: { cellWidth: 25 },
-      3: { cellWidth: 15, halign: "center" },
-      4: { cellWidth: 30, halign: "right" },
-      5: { cellWidth: 30, halign: "right" },
+      0: { cellWidth: 45 },
+      1: { cellWidth: 25 },
+      2: { cellWidth: 22 },
+      3: { cellWidth: 28 },
+      4: { cellWidth: 12, halign: "center" },
+      5: { cellWidth: 28, halign: "right" },
+      6: { cellWidth: 22, halign: "right" },
     },
   });
 
@@ -129,14 +129,18 @@ export function downloadReceipt(order) {
 }
 
 export function printReceipt(order) {
-  const itemRows = order.items?.map((item) => `
-    <tr>
-      <td>${item.name}${item.strength ? `<br/><span class="sub">${item.strength}</span>` : ""}</td>
-      <td class="center">${item.quantity}</td>
-      <td class="right">${parseFloat(item.price).toFixed(2)}</td>
-      <td class="right">${(parseFloat(item.price) * item.quantity).toFixed(2)}</td>
-    </tr>
-  `).join("") || "";
+  const itemRows = order.items?.map((item) => {
+    const packDisplay = item.unit || "-";
+    return `
+      <tr>
+        <td>${item.name}${item.strength ? `<br/><span class="sub">${item.strength}</span>` : ""}</td>
+        <td class="center">${packDisplay}</td>
+        <td class="center">${item.quantity}</td>
+        <td class="right">${parseFloat(item.price).toFixed(2)}</td>
+        <td class="right">${(parseFloat(item.price) * item.quantity).toFixed(2)}</td>
+      </tr>
+    `;
+  }).join("") || "";
 
   const html = `
     <!DOCTYPE html>
@@ -148,60 +152,98 @@ export function printReceipt(order) {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
           font-family: 'Courier New', monospace;
-          font-size: 11px;
+          font-size: 12px;
           width: 80mm;
           padding: 6px;
           color: #000;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
         .center { text-align: center; }
         .right { text-align: right; }
         .bold { font-weight: bold; }
         .header { text-align: center; margin-bottom: 6px; }
-        .header h1 { font-size: 15px; font-weight: bold; }
-        .header p { font-size: 10px; margin: 1px 0; }
+        .header h1 {
+          font-size: 16px;
+          font-weight: 900;
+          letter-spacing: 1px;
+          color: #000;
+        }
+        .header p {
+          font-size: 11px;
+          margin: 2px 0;
+          font-weight: 600;
+          color: #000;
+        }
         .divider {
-          border-top: 1px dashed #000;
+          border-top: 2px dashed #000;
           margin: 6px 0;
         }
         .info-row {
           display: flex;
           justify-content: space-between;
-          margin: 2px 0;
-          font-size: 10px;
+          margin: 3px 0;
+          font-size: 11px;
+          font-weight: 700;
+          color: #000;
+        }
+        .info-row span:first-child {
+          font-weight: 900;
         }
         table {
           width: 100%;
           border-collapse: collapse;
           margin: 4px 0;
-          font-size: 10px;
+          font-size: 11px;
+          color: #000;
         }
         thead tr {
-          border-top: 1px solid #000;
-          border-bottom: 1px solid #000;
+          border-top: 2px solid #000;
+          border-bottom: 2px solid #000;
         }
-        th { padding: 3px 2px; text-align: left; font-size: 10px; }
-        td { padding: 3px 2px; vertical-align: top; }
-        th:nth-child(2), td:nth-child(2) { text-align: center; }
-        th:nth-child(3), td:nth-child(3),
-        th:nth-child(4), td:nth-child(4) { text-align: right; }
-        tbody tr:last-child { border-bottom: 1px solid #000; }
-        .sub { font-size: 9px; color: #444; }
+        th {
+          padding: 4px 2px;
+          text-align: left;
+          font-size: 11px;
+          font-weight: 900;
+          color: #000;
+        }
+        td {
+          padding: 4px 2px;
+          vertical-align: top;
+          font-weight: 700;
+          color: #000;
+        }
+        th:nth-child(2), td:nth-child(2),
+        th:nth-child(3), td:nth-child(3) { text-align: center; }
+        th:nth-child(4), td:nth-child(4),
+        th:nth-child(5), td:nth-child(5) { text-align: right; }
+        tbody tr:last-child { border-bottom: 2px solid #000; }
+        .sub {
+          font-size: 10px;
+          color: #222;
+          font-weight: 600;
+        }
         .total-row {
           display: flex;
           justify-content: space-between;
-          font-size: 13px;
-          font-weight: bold;
-          margin: 4px 0;
+          font-size: 14px;
+          font-weight: 900;
+          margin: 5px 0;
+          color: #000;
         }
         .words {
-          font-size: 9px;
-          color: #444;
+          font-size: 10px;
+          color: #111;
+          font-weight: 700;
           margin-bottom: 6px;
         }
         .footer {
           text-align: center;
-          font-size: 10px;
+          font-size: 11px;
+          font-weight: 700;
           margin-top: 8px;
+          color: #000;
         }
         @media print {
           @page {
@@ -231,7 +273,7 @@ export function printReceipt(order) {
 
       <div class="info-row"><span>Customer:</span><span>${order.name || "Walk-in"}</span></div>
       <div class="info-row"><span>Phone:</span><span>${order.phone || "N/A"}</span></div>
-      <div class="info-row"><span>Address:</span><span style="max-width:55mm;text-align:right">${order.address || "N/A"}</span></div>
+      <div class="info-row"><span>Address:</span><span style="max-width:50mm;text-align:right;font-weight:700">${order.address || "N/A"}</span></div>
 
       <div class="divider"></div>
 
@@ -239,6 +281,7 @@ export function printReceipt(order) {
         <thead>
           <tr>
             <th>Item</th>
+            <th>Pack</th>
             <th>Qty</th>
             <th>Price</th>
             <th>Total</th>
@@ -253,7 +296,7 @@ export function printReceipt(order) {
 
       <div class="total-row">
         <span>TOTAL:</span>
-        <span>TK ${parseFloat(order.total).toFixed(2)}</span>
+        <span>BDT ${parseFloat(order.total).toFixed(2)}</span>
       </div>
       <div class="words">${numberToWords(parseFloat(order.total))} Taka only</div>
 
