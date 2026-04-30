@@ -55,7 +55,7 @@ export function generateReceipt(order) {
   const tableRows = order.items?.map((item) => [
     item.name,
     item.category || "",
-    item.strength || "",
+    `${item.strength || ""} ${item.unit_size > 1 ? `(${item.unit})` : ""}`.trim(),
     item.quantity,
     `${parseFloat(item.price).toFixed(2)}`,
     `${(parseFloat(item.price) * item.quantity).toFixed(2)}`,
@@ -274,7 +274,7 @@ export function printReceipt(order) {
 
 export function whatsappReceipt(order) {
   const items = order.items?.map(
-    (item) => `• ${item.name} x${item.quantity} = ৳${(parseFloat(item.price) * item.quantity).toFixed(2)}`
+    (item) => `• ${item.name}${item.unit_size > 1 ? ` (${item.unit})` : ""} x${item.quantity} = ৳${(parseFloat(item.price) * item.quantity).toFixed(2)}`
   ).join("\n") || "";
 
   const message =
