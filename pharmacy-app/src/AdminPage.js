@@ -14,6 +14,7 @@ function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
   const [user, setUser] = useState(null);
+  const [expandedUserPresc, setExpandedUserPresc] = useState(null); // orderId
 
   // Wait for Firebase auth to load before checking admin
   useEffect(() => {
@@ -208,6 +209,12 @@ function AdminPage() {
                   ) : (
                     orders.map((o) => {
                       const statusStyle = getStatusColor(o.status);
+                      // Prescriptions linked to this order
+                      const orderPrescriptions = prescriptions.filter((p) => p.orderId === o.id);
+                      // All other prescriptions from same user
+                      const userOtherPrescriptions = prescriptions.filter((p) => p.userEmail === o.userEmail && p.orderId !== o.id);
+                      const isExpanded = expandedUserPresc === o.id;
+
                       return (
                         <div key={o.id} style={styles.card}>
                           <div style={{ flex: 1 }}>
@@ -230,6 +237,34 @@ function AdminPage() {
                                 </p>
                               ))}
                             </div>
+
+                            {/* Prescriptions linked to this order */}
+                            {orderPrescriptions.length > 0 && (
+                              <div style={styles.prescBlock}>
+                                <p style={styles.prescBlockLabel}>📋 Prescriptions with this order</p>
+                                <div style={styles.prescRow}>
+                                  {orderPrescriptions.map((p) => {
+                                    const ps = getStatusColor(p.status);
+                                    return (
+                                      <div key={p.id} style={{ position: "relative" }}>
+                                        <img
+                                          src={p.imageUrl}
+                                          alt="prescription"
+                                          style={{ ...styles.prescImg, cursor: "zoom-in" }}
+                                          onClick={() => setSelectedImage(p.imageUrl)}
+                                        />
+                                        <span style={{ ...styles.prescDot, backgroundColor: ps.color }} title={p.status} />
+                                        <div style={styles.prescActions}>
+                                          <button onClick={() => updatePrescriptionStatus(p.id, "approved")} style={styles.prescApprove}>✅</button>
+                                          <button onClick={() => updatePrescriptionStatus(p.id, "rejected")} style={styles.prescReject}>❌</button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
                             <div style={styles.orderFooter}>
                               <strong style={styles.orderTotal}>Total: ৳{o.total}</strong>
                               <div style={styles.btnRow}>
@@ -241,8 +276,44 @@ function AdminPage() {
                                 <button onClick={() => printReceipt({ id: o.id, name: o.name, phone: o.phone, address: o.address, paymentMethod: o.paymentMethod, items: o.items, total: o.total, status: o.status, createdAt: o.createdAt?.toDate?.().toLocaleString() })} style={styles.printBtn}>🖨️ Print</button>
                                 <button onClick={() => downloadReceipt({ id: o.id, name: o.name, phone: o.phone, address: o.address, paymentMethod: o.paymentMethod, items: o.items, total: o.total, status: o.status, createdAt: o.createdAt?.toDate?.().toLocaleString() })} style={styles.downloadBtn}>📥 PDF</button>
                                 <button onClick={() => whatsappReceipt({ id: o.id, name: o.name, phone: o.phone, address: o.address, paymentMethod: o.paymentMethod, items: o.items, total: o.total, status: o.status, createdAt: o.createdAt?.toDate?.().toLocaleString() })} style={styles.whatsappBtn}>💬 WhatsApp</button>
+                                {userOtherPrescriptions.length > 0 && (
+                                  <button
+                                    onClick={() => setExpandedUserPresc(isExpanded ? null : o.id)}
+                                    style={styles.morePrescBtn}
+                                  >
+                                    📋 {isExpanded ? "Hide" : `${userOtherPrescriptions.length} more from user`}
+                                  </button>
+                                )}
                               </div>
                             </div>
+
+                            {/* Expandable: all other prescriptions from this user */}
+                            {isExpanded && (
+                              <div style={styles.userPrescBlock}>
+                                <p style={styles.prescBlockLabel}>📋 All other prescriptions from {o.userEmail}</p>
+                                <div style={styles.prescRow}>
+                                  {userOtherPrescriptions.map((p) => {
+                                    const ps = getStatusColor(p.status);
+                                    return (
+                                      <div key={p.id} style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                                        <img
+                                          src={p.imageUrl}
+                                          alt="prescription"
+                                          style={{ ...styles.prescImg, cursor: "zoom-in" }}
+                                          onClick={() => setSelectedImage(p.imageUrl)}
+                                        />
+                                        <span style={{ ...styles.prescDot, backgroundColor: ps.color }} title={p.status} />
+                                        <span style={{ fontSize: "10px", color: "#94a3b8" }}>{p.uploadedAt?.toDate?.().toLocaleDateString()}</span>
+                                        <div style={styles.prescActions}>
+                                          <button onClick={() => updatePrescriptionStatus(p.id, "approved")} style={styles.prescApprove}>✅</button>
+                                          <button onClick={() => updatePrescriptionStatus(p.id, "rejected")} style={styles.prescReject}>❌</button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -532,6 +603,35 @@ const styles = {
     fontSize: "13px",
     fontWeight: "700",
   },
+  morePrescBtn: { padding: "7px 14px", backgroundColor: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
+  prescBlock: {
+    backgroundColor: "#f0fdf4",
+    border: "1px solid #bbf7d0",
+    borderRadius: "12px",
+    padding: "12px",
+    marginBottom: "12px",
+  },
+  userPrescBlock: {
+    backgroundColor: "#fffbeb",
+    border: "1px solid #fde68a",
+    borderRadius: "12px",
+    padding: "12px",
+    marginTop: "10px",
+  },
+  prescBlockLabel: { fontSize: "12px", fontWeight: "700", color: "#374151", margin: "0 0 10px 0" },
+  prescRow: { display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "flex-start" },
+  prescDot: {
+    position: "absolute",
+    top: "4px",
+    right: "4px",
+    width: "10px",
+    height: "10px",
+    borderRadius: "50%",
+    border: "2px solid white",
+  },
+  prescActions: { display: "flex", gap: "4px", marginTop: "4px" },
+  prescApprove: { padding: "3px 6px", backgroundColor: "#dcfce7", color: "#16a34a", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "12px" },
+  prescReject: { padding: "3px 6px", backgroundColor: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "12px" },
   itemsList: {
     backgroundColor: "white",
     borderRadius: "10px",

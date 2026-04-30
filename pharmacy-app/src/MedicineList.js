@@ -3,30 +3,21 @@ import Papa from "papaparse";
 import { useCart } from "./CartContext";
 import { getMedicineEmoji, getUnitLabel, getUnitShort } from "./medicineUtils";
 
-function MedicineCard({ med, addToCart }) {
-  const [qty, setQty] = useState(0);
-  const [added, setAdded] = useState(false);
-
+function MedicineCard({ med, addToCart, cartItem }) {
+  // Derive qty and added directly from cart so it resets when cart clears
+  const qty = cartItem ? cartItem.quantity : 0;
+  const added = qty > 0;
 
   function handleAdd() {
-    setQty(1);
     addToCart({ ...med, quantity: 1 });
-    setAdded(true);
   }
 
   function handleIncrement() {
-    const newQty = qty + 1;
-    setQty(newQty);
     addToCart(med);
   }
 
   function handleDecrement() {
-    if (qty <= 1) {
-      setQty(0);
-      setAdded(false);
-    } else {
-      setQty(qty - 1);
-    }
+    addToCart({ ...med, quantity: -1, decrement: true });
   }
 
   return (
@@ -71,7 +62,7 @@ function MedicineList() {
   const [medicines, setMedicines] = useState([]);
   const [search, setSearch] = useState("");
   const [filtered, setFiltered] = useState([]);
-  const { addToCart } = useCart();
+  const { addToCart, removeFromCart, cart } = useCart();
 
   useEffect(() => {
     Papa.parse("/medicines.csv", {
@@ -96,6 +87,27 @@ function MedicineList() {
       setFiltered(results.slice(0, 12));
     }
   }, [search, medicines]);
+
+  // Find this medicine's cart entry (if any) so MedicineCard stays in sync
+  function getCartItem(med) {
+    return cart.find((item) => item.medicine_name === med.medicine_name) || null;
+  }
+
+  // Unified add/decrement handler passed to card
+  function handleAddToCart(med) {
+    if (med.decrement) {
+      // Decrement: if qty is 1, remove; else reduce by 1
+      const existing = cart.find((item) => item.medicine_name === med.medicine_name);
+      if (existing && existing.quantity <= 1) {
+        removeFromCart(med.medicine_name);
+      } else {
+        // Use addToCart with quantity -1 — we'll handle this in CartContext
+        addToCart({ ...med, quantity: -1, decrement: true });
+      }
+    } else {
+      addToCart(med);
+    }
+  }
 
   return (
     <div style={styles.container}>
@@ -125,7 +137,12 @@ function MedicineList() {
       ) : (
         <div style={styles.grid}>
           {filtered.map((med, index) => (
-            <MedicineCard key={index} med={med} addToCart={addToCart} />
+            <MedicineCard
+              key={index}
+              med={med}
+              addToCart={handleAddToCart}
+              cartItem={getCartItem(med)}
+            />
           ))}
         </div>
       )}
@@ -136,8 +153,7 @@ function MedicineList() {
 const styles = {
   container: {
     padding: "60px 24px",
-    backgroundColor: "#f8fafc",
-    minHeight: "60vh",
+    // No backgroundColor here — prevents white bleed against the page
   },
   header: {
     textAlign: "center",

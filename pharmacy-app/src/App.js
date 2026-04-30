@@ -7,7 +7,7 @@ import "./App.css";
 function App() {
   return (
     <CartProvider>
-      <div>
+      <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh" }}>
         <Navbar />
         <div id="home">
           <Hero />
