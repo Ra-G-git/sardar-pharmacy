@@ -62,7 +62,7 @@ function MedicineList() {
   const [medicines, setMedicines] = useState([]);
   const [search, setSearch] = useState("");
   const [filtered, setFiltered] = useState([]);
-  const { addToCart, removeFromCart, cart } = useCart();
+  const { addToCart, cart } = useCart();
 
   useEffect(() => {
     Papa.parse("/medicines.csv", {
@@ -88,25 +88,14 @@ function MedicineList() {
     }
   }, [search, medicines]);
 
-  // Find this medicine's cart entry (if any) so MedicineCard stays in sync
+  // Find this medicine's cart entry by slug so card stays in sync with cart
   function getCartItem(med) {
-    return cart.find((item) => item.medicine_name === med.medicine_name) || null;
+    return cart.find((item) => item.slug === med.slug) || null;
   }
 
-  // Unified add/decrement handler passed to card
+  // Pass through to CartContext — decrement flag handled there
   function handleAddToCart(med) {
-    if (med.decrement) {
-      // Decrement: if qty is 1, remove; else reduce by 1
-      const existing = cart.find((item) => item.medicine_name === med.medicine_name);
-      if (existing && existing.quantity <= 1) {
-        removeFromCart(med.medicine_name);
-      } else {
-        // Use addToCart with quantity -1 — we'll handle this in CartContext
-        addToCart({ ...med, quantity: -1, decrement: true });
-      }
-    } else {
-      addToCart(med);
-    }
+    addToCart(med);
   }
 
   return (

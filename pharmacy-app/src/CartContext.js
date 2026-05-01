@@ -8,6 +8,21 @@ export function CartProvider({ children }) {
   function addToCart(medicine) {
     setCart((prev) => {
       const exists = prev.find((item) => item.slug === medicine.slug);
+
+      // Decrement mode: reduce by 1 or remove if qty hits 0
+      if (medicine.decrement) {
+        if (!exists) return prev;
+        if (exists.quantity <= 1) {
+          return prev.filter((item) => item.slug !== medicine.slug);
+        }
+        return prev.map((item) =>
+          item.slug === medicine.slug
+            ? { ...item, quantity: item.quantity - 1 }
+            : item
+        );
+      }
+
+      // Normal add: increment if exists, otherwise add with qty 1
       if (exists) {
         return prev.map((item) =>
           item.slug === medicine.slug
