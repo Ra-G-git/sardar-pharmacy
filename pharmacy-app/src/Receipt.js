@@ -335,32 +335,32 @@ export function whatsappReceipt(order) {
   ).join("\n") || "";
 
   const discountLine = discount > 0
-    ? `\n🏷️ Subtotal: ৳${subtotal.toFixed(2)}\n💚 Discount (${discount}%): -৳${discountAmt.toFixed(2)}`
+    ? `\nSubtotal: Tk ${subtotal.toFixed(2)}\nDiscount (${discount}%): -Tk ${discountAmt.toFixed(2)}`
     : "";
 
-  const noteLine = order.note ? `\n📝 Note: ${order.note}` : "";
+  const noteLine = order.note ? `\nNote: ${order.note}` : "";
 
   const message =
-`💊 *Sardar Pharmacy*
-📍 10/1 Pallabi, Mirpur-11½, Dhaka-1216
-📞 01559084327
+`*Sardar Pharmacy*
+10/1 Pallabi, Mirpur-11½, Dhaka-1216
+Tel: 01559084327
 
 *RECEIPT*
-━━━━━━━━━━━━━━━━
-🔖 Order ID: #${order.id?.slice(0, 8).toUpperCase() || "N/A"}
-📅 Date: ${order.createdAt || new Date().toLocaleString()}
-━━━━━━━━━━━━━━━━
-👤 Name: ${order.name || "Walk-in Customer"}
-📞 Phone: ${order.phone || "N/A"}
-📍 Address: ${order.address || "N/A"}
-━━━━━━━━━━━━━━━━
+--------------------------------
+Order ID: #${order.id?.slice(0, 8).toUpperCase() || "N/A"}
+Date: ${order.createdAt || new Date().toLocaleString()}
+--------------------------------
+Name: ${order.name || "Walk-in Customer"}
+Phone: ${order.phone || "N/A"}
+Address: ${order.address || "N/A"}
+--------------------------------
 *ITEMS:*
 ${items}
-━━━━━━━━━━━━━━━━${discountLine}
-💰 *TOTAL: ৳${total.toFixed(2)}*
-💳 Payment: ${order.paymentMethod || "Cash"}
-✅ Status: ${order.status || "Pending"}${noteLine}
-━━━━━━━━━━━━━━━━
+--------------------------------${discountLine}
+*TOTAL: Tk ${total.toFixed(2)}*
+Payment: ${order.paymentMethod || "Cash"}
+Status: ${order.status || "Pending"}${noteLine}
+--------------------------------
 _Thank you for choosing Sardar Pharmacy!_`;
 
   const encoded = encodeURIComponent(message);
