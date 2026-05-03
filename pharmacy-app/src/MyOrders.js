@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { auth, db } from "./firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { getMedicineEmoji } from "./medicineUtils";
-import { downloadReceipt, printReceipt } from "./Receipt";
+import { downloadReceipt } from "./Receipt";
 
 function MyOrders({ onClose }) {
   const [orders, setOrders] = useState([]);
@@ -155,9 +155,6 @@ function MyOrders({ onClose }) {
 
                   {/* Receipt + More Prescriptions buttons */}
                   <div style={styles.receiptBtns}>
-                    <button style={styles.printBtn} onClick={() => printReceipt({ id: o.id, name: o.name, phone: o.phone, address: o.address, paymentMethod: o.paymentMethod, items: o.items, total: o.total, status: o.status, createdAt: o.createdAt?.toDate?.().toLocaleString() })}>
-                      🖨️ Print
-                    </button>
                     <button style={styles.downloadBtn} onClick={() => downloadReceipt({ id: o.id, name: o.name, phone: o.phone, address: o.address, paymentMethod: o.paymentMethod, items: o.items, total: o.total, status: o.status, createdAt: o.createdAt?.toDate?.().toLocaleString() })}>
                       📥 PDF
                     </button>

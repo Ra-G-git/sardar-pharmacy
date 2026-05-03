@@ -18,6 +18,11 @@ function AdminPage() {
   const [user, setUser] = useState(null);
   const [expandedUserPresc, setExpandedUserPresc] = useState(null);
 
+  // Sorting
+  const [prescSort, setPrescSort] = useState("newest");
+  const [orderSort, setOrderSort] = useState("newest");
+  const [orderStatusFilter, setOrderStatusFilter] = useState("all");
+
   // Inventory edit state
   const [editingInv, setEditingInv] = useState(null);
   const [editInvPrice, setEditInvPrice] = useState("");
@@ -94,6 +99,31 @@ function AdminPage() {
     }
   }
 
+  function sortByDate(arr, field, direction) {
+    return [...arr].sort((a, b) => {
+      const aTime = a[field]?.toDate?.()?.getTime() || 0;
+      const bTime = b[field]?.toDate?.()?.getTime() || 0;
+      return direction === "newest" ? bTime - aTime : aTime - bTime;
+    });
+  }
+
+  const sortedPrescriptions = (() => {
+    let list = [...prescriptions];
+    if (prescSort === "pending") list = list.filter(p => p.status === "pending");
+    else if (prescSort === "approved") list = list.filter(p => p.status === "approved");
+    else if (prescSort === "rejected") list = list.filter(p => p.status === "rejected");
+    else list = sortByDate(list, "uploadedAt", prescSort);
+    return list;
+  })();
+
+  const sortedOrders = (() => {
+    let list = orderStatusFilter === "all"
+      ? [...orders]
+      : orders.filter(o => o.status === orderStatusFilter);
+    list = sortByDate(list, "createdAt", orderSort);
+    return list;
+  })();
+
   if (!loading && (!user || user.email !== ADMIN_EMAIL)) {
     return (
       <div style={styles.deniedPage}>
@@ -118,20 +148,38 @@ function AdminPage() {
   );
 
   const tabs = [
-    { id: "prescriptions", label: "📋 Prescriptions", count: prescriptions.length },
-    { id: "orders", label: "🛒 Orders", count: orders.length },
-    { id: "inventory", label: "📦 Inventory", count: inventory.length, alert: lowStockItems.length > 0 },
-    { id: "users", label: "👤 Users", count: users.length },
+    { id: "prescriptions", label: "📋 Rx", fullLabel: "📋 Prescriptions", count: prescriptions.length },
+    { id: "orders", label: "🛒 Orders", fullLabel: "🛒 Orders", count: orders.length },
+    { id: "inventory", label: "📦 Stock", fullLabel: "📦 Inventory", count: inventory.length, alert: lowStockItems.length > 0 },
+    { id: "users", label: "👤 Users", fullLabel: "👤 Users", count: users.length },
   ];
+
+  const SortBar = ({ value, onChange, options }) => (
+    <div style={styles.sortBar}>
+      {options.map(opt => (
+        <button
+          key={opt.value}
+          onClick={() => onChange(opt.value)}
+          style={{
+            ...styles.sortBtn,
+            backgroundColor: value === opt.value ? "#1e40af" : "#f1f5f9",
+            color: value === opt.value ? "white" : "#64748b",
+          }}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div style={styles.page}>
       <div style={styles.header}>
         <div>
-          <h1 style={styles.title}>🔧 Admin Dashboard</h1>
-          <p style={styles.subtitle}>Sardar Pharmacy Management</p>
+          <h1 style={styles.title}>🔧 Admin</h1>
+          <p style={styles.subtitle}>Sardar Pharmacy</p>
         </div>
-        <button onClick={() => window.close()} style={styles.closeBtn}>✕ Close Tab</button>
+        <button onClick={() => window.close()} style={styles.closeBtn}>✕</button>
       </div>
 
       <div style={styles.body}>
@@ -139,15 +187,15 @@ function AdminPage() {
         <div style={styles.statsRow}>
           <div style={styles.statCard}>
             <p style={styles.statNum}>{orders.length}</p>
-            <p style={styles.statLabel}>Total Orders</p>
+            <p style={styles.statLabel}>Orders</p>
           </div>
           <div style={{ ...styles.statCard, backgroundColor: "#fffbeb" }}>
             <p style={{ ...styles.statNum, color: "#d97706" }}>{pendingOrders}</p>
-            <p style={styles.statLabel}>Pending Orders</p>
+            <p style={styles.statLabel}>Pending</p>
           </div>
           <div style={{ ...styles.statCard, backgroundColor: "#fef2f2" }}>
             <p style={{ ...styles.statNum, color: "#dc2626" }}>{pendingPrescriptions}</p>
-            <p style={styles.statLabel}>Pending Rx</p>
+            <p style={styles.statLabel}>Rx</p>
           </div>
           <div style={{ ...styles.statCard, backgroundColor: "#f0fdf4" }}>
             <p style={{ ...styles.statNum, color: "#16a34a" }}>৳{totalRevenue.toFixed(0)}</p>
@@ -156,7 +204,7 @@ function AdminPage() {
           {lowStockItems.length > 0 && (
             <div style={{ ...styles.statCard, backgroundColor: "#fff7ed" }}>
               <p style={{ ...styles.statNum, color: "#ea580c" }}>{lowStockItems.length}</p>
-              <p style={styles.statLabel}>Low Stock ⚠️</p>
+              <p style={styles.statLabel}>Low ⚠️</p>
             </div>
           )}
         </div>
@@ -169,7 +217,8 @@ function AdminPage() {
               backgroundColor: activeTab === tab.id ? "#1e40af" : "#f1f5f9",
               color: activeTab === tab.id ? "white" : "#64748b",
             }}>
-              {tab.label}
+              <span className="tab-full">{tab.fullLabel}</span>
+              <span className="tab-short" style={{ display: "none" }}>{tab.label}</span>
               <span style={{ ...styles.tabBadge, backgroundColor: activeTab === tab.id ? "rgba(255,255,255,0.3)" : "#e2e8f0", color: activeTab === tab.id ? "white" : "#64748b" }}>
                 {tab.count}
               </span>
@@ -180,23 +229,34 @@ function AdminPage() {
 
         <div style={styles.content}>
           {loading ? (
-            <div style={styles.loading}><p style={{ fontSize: "48px" }}>⏳</p><p>Loading data...</p></div>
+            <div style={styles.loading}><p style={{ fontSize: "48px" }}>⏳</p><p>Loading...</p></div>
           ) : (
             <>
               {/* Prescriptions Tab */}
               {activeTab === "prescriptions" && (
                 <div>
-                  {prescriptions.length === 0 ? (
-                    <div style={styles.empty}><p style={{ fontSize: "48px" }}>📋</p><p style={styles.emptyText}>No prescriptions yet</p></div>
+                  <SortBar
+                    value={prescSort}
+                    onChange={setPrescSort}
+                    options={[
+                      { value: "newest", label: "Newest" },
+                      { value: "oldest", label: "Oldest" },
+                      { value: "pending", label: "⏳ Pending" },
+                      { value: "approved", label: "✅ Approved" },
+                      { value: "rejected", label: "❌ Rejected" },
+                    ]}
+                  />
+                  {sortedPrescriptions.length === 0 ? (
+                    <div style={styles.empty}><p style={{ fontSize: "48px" }}>📋</p><p style={styles.emptyText}>No prescriptions</p></div>
                   ) : (
-                    prescriptions.map((p) => {
+                    sortedPrescriptions.map((p) => {
                       const statusStyle = getStatusColor(p.status);
                       return (
                         <div key={p.id} style={styles.card}>
                           <div style={{ flexShrink: 0 }}>
                             <img src={p.imageUrl} alt="prescription" style={{ ...styles.prescImg, cursor: "zoom-in" }} onClick={() => setSelectedImage(p.imageUrl)} />
                           </div>
-                          <div style={{ flex: 1 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={styles.cardHeader}>
                               <p style={styles.cardEmail}>👤 {p.userEmail}</p>
                               <span style={{ ...styles.statusBadge, backgroundColor: statusStyle.bg, color: statusStyle.color }}>{p.status}</span>
@@ -218,20 +278,47 @@ function AdminPage() {
               {/* Orders Tab */}
               {activeTab === "orders" && (
                 <div>
-                  {orders.length === 0 ? (
-                    <div style={styles.empty}><p style={{ fontSize: "48px" }}>🛒</p><p style={styles.emptyText}>No orders yet</p></div>
+                  <div style={styles.orderSortWrap}>
+                    <SortBar
+                      value={orderSort}
+                      onChange={setOrderSort}
+                      options={[
+                        { value: "newest", label: "Newest" },
+                        { value: "oldest", label: "Oldest" },
+                      ]}
+                    />
+                    <SortBar
+                      value={orderStatusFilter}
+                      onChange={setOrderStatusFilter}
+                      options={[
+                        { value: "all", label: "All" },
+                        { value: "pending", label: "⏳ Pending" },
+                        { value: "processing", label: "🔄 Processing" },
+                        { value: "delivered", label: "✅ Delivered" },
+                        { value: "cancelled", label: "❌ Cancelled" },
+                      ]}
+                    />
+                  </div>
+                  {sortedOrders.length === 0 ? (
+                    <div style={styles.empty}><p style={{ fontSize: "48px" }}>🛒</p><p style={styles.emptyText}>No orders</p></div>
                   ) : (
-                    orders.map((o) => {
+                    sortedOrders.map((o) => {
                       const statusStyle = getStatusColor(o.status);
                       const orderPrescriptions = prescriptions.filter((p) => p.orderId === o.id);
                       const userOtherPrescriptions = prescriptions.filter((p) => p.userEmail === o.userEmail && p.orderId !== o.id);
                       const isExpanded = expandedUserPresc === o.id;
+                      const receiptData = {
+                        id: o.id, name: o.name, phone: o.phone, address: o.address,
+                        paymentMethod: o.paymentMethod, items: o.items, total: o.total,
+                        subtotal: o.subtotal, discount: o.discount, note: o.note,
+                        status: o.status, createdAt: o.createdAt?.toDate?.().toLocaleString(),
+                      };
                       return (
                         <div key={o.id} style={styles.card}>
-                          <div style={{ flex: 1 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={styles.cardHeader}>
-                              <div>
-                                <p style={styles.cardEmail}>👤 {o.userEmail}</p>
+                              <div style={{ minWidth: 0 }}>
+                                <p style={styles.cardEmail}>👤 {o.name || o.userEmail}</p>
                                 <p style={styles.cardDetail}>#{o.id.slice(0, 8).toUpperCase()}</p>
                               </div>
                               <span style={{ ...styles.statusBadge, backgroundColor: statusStyle.bg, color: statusStyle.color }}>{o.status}</span>
@@ -242,7 +329,9 @@ function AdminPage() {
                             <div style={styles.itemsList}>
                               {o.items?.map((item, i) => (
                                 <p key={i} style={styles.orderItem}>
-                                  {getMedicineEmoji(item.category)} {item.name} ×{item.quantity} — ৳{(parseFloat(item.price) * item.quantity).toFixed(2)}
+                                  {getMedicineEmoji(item.category)} {item.name}
+                                  {item.byPiece ? " (Piece)" : item.unit_size > 1 ? ` (${item.unit})` : ""}
+                                  {" "}×{item.quantity} — ৳{(parseFloat(item.price) * item.quantity).toFixed(2)}
                                 </p>
                               ))}
                             </div>
@@ -268,25 +357,25 @@ function AdminPage() {
                             )}
                             <div style={styles.orderFooter}>
                               <strong style={styles.orderTotal}>Total: ৳{o.total}</strong>
-                              <div style={styles.btnRow}>
-                                <button onClick={() => updateOrderStatus(o.id, "processing")} style={styles.processBtn}>🔄 Processing</button>
-                                <button onClick={() => updateOrderStatus(o.id, "delivered")} style={styles.approveBtn}>✅ Delivered</button>
-                                <button onClick={() => updateOrderStatus(o.id, "cancelled")} style={styles.rejectBtn}>❌ Cancel</button>
-                              </div>
-                              <div style={styles.btnRow}>
-                                <button onClick={() => printReceipt({ id: o.id, name: o.name, phone: o.phone, address: o.address, paymentMethod: o.paymentMethod, items: o.items, total: o.total, status: o.status, createdAt: o.createdAt?.toDate?.().toLocaleString() })} style={styles.printBtn}>🖨️ Print</button>
-                                <button onClick={() => downloadReceipt({ id: o.id, name: o.name, phone: o.phone, address: o.address, paymentMethod: o.paymentMethod, items: o.items, total: o.total, status: o.status, createdAt: o.createdAt?.toDate?.().toLocaleString() })} style={styles.downloadBtn}>📥 PDF</button>
-                                <button onClick={() => whatsappReceipt({ id: o.id, name: o.name, phone: o.phone, address: o.address, paymentMethod: o.paymentMethod, items: o.items, total: o.total, status: o.status, createdAt: o.createdAt?.toDate?.().toLocaleString() })} style={styles.whatsappBtn}>💬 WhatsApp</button>
-                                {userOtherPrescriptions.length > 0 && (
-                                  <button onClick={() => setExpandedUserPresc(isExpanded ? null : o.id)} style={styles.morePrescBtn}>
-                                    📋 {isExpanded ? "Hide" : `${userOtherPrescriptions.length} more from user`}
-                                  </button>
-                                )}
-                              </div>
+                            </div>
+                            <div style={styles.btnRow}>
+                              <button onClick={() => updateOrderStatus(o.id, "processing")} style={styles.processBtn}>🔄</button>
+                              <button onClick={() => updateOrderStatus(o.id, "delivered")} style={styles.approveBtn}>✅ Delivered</button>
+                              <button onClick={() => updateOrderStatus(o.id, "cancelled")} style={styles.rejectBtn}>❌</button>
+                            </div>
+                            <div style={styles.btnRow}>
+                              <button onClick={() => printReceipt(receiptData)} style={styles.printBtn}>🖨️ Print</button>
+                              <button onClick={() => downloadReceipt(receiptData)} style={styles.downloadBtn}>📥 PDF</button>
+                              <button onClick={() => whatsappReceipt(receiptData)} style={styles.whatsappBtn}>💬 WA</button>
+                              {userOtherPrescriptions.length > 0 && (
+                                <button onClick={() => setExpandedUserPresc(isExpanded ? null : o.id)} style={styles.morePrescBtn}>
+                                  📋 {isExpanded ? "Hide" : `+${userOtherPrescriptions.length} Rx`}
+                                </button>
+                              )}
                             </div>
                             {isExpanded && (
                               <div style={styles.userPrescBlock}>
-                                <p style={styles.prescBlockLabel}>📋 All other prescriptions from {o.userEmail}</p>
+                                <p style={styles.prescBlockLabel}>📋 All other Rx from {o.userEmail}</p>
                                 <div style={styles.prescRow}>
                                   {userOtherPrescriptions.map((p) => {
                                     const ps = getStatusColor(p.status);
@@ -318,31 +407,28 @@ function AdminPage() {
                 <div>
                   <div style={styles.invTopBar}>
                     <div>
-                      <p style={{ fontSize: "14px", color: "#64748b", margin: 0 }}>
-                        {inventory.length} medicines in your inventory • Prices override CSV
+                      <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
+                        {inventory.length} medicines • Prices override CSV
                       </p>
                       {lowStockItems.length > 0 && (
-                        <p style={{ fontSize: "13px", color: "#ea580c", margin: "4px 0 0 0", fontWeight: "600" }}>
-                          ⚠️ {lowStockItems.length} item{lowStockItems.length > 1 ? "s" : ""} low on stock (≤{LOW_STOCK_THRESHOLD} units)
+                        <p style={{ fontSize: "12px", color: "#ea580c", margin: "4px 0 0 0", fontWeight: "600" }}>
+                          ⚠️ {lowStockItems.length} low stock (≤{LOW_STOCK_THRESHOLD})
                         </p>
                       )}
                     </div>
                     <input
                       type="text"
-                      placeholder="Search inventory..."
+                      placeholder="Search..."
                       value={invSearch}
                       onChange={(e) => setInvSearch(e.target.value)}
                       style={styles.invSearchInput}
                     />
                   </div>
-
                   {inventory.length === 0 ? (
                     <div style={styles.empty}>
                       <p style={{ fontSize: "48px" }}>📦</p>
                       <p style={styles.emptyText}>No inventory yet</p>
-                      <p style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>
-                        Go to POS → add a medicine to cart → click ✏️ to set price & stock
-                      </p>
+                      <p style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>Go to POS → add medicine → ✏️ to set price & stock</p>
                     </div>
                   ) : (
                     <div style={styles.invGrid}>
@@ -352,16 +438,15 @@ function AdminPage() {
                         return (
                           <div key={item.id} style={{ ...styles.invCard, border: isLow ? "1.5px solid #fed7aa" : "1px solid #e2e8f0" }}>
                             <div style={styles.invCardTop}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                                <span style={{ fontSize: "24px" }}>{getMedicineEmoji(item.category_name)}</span>
-                                <div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+                                <span style={{ fontSize: "22px", flexShrink: 0 }}>{getMedicineEmoji(item.category_name)}</span>
+                                <div style={{ minWidth: 0 }}>
                                   <p style={styles.invName}>{item.medicine_name}</p>
                                   <p style={styles.invGeneric}>{item.generic_name}{item.strength ? ` • ${item.strength}` : ""}</p>
                                 </div>
                               </div>
                               {isLow && <span style={styles.lowBadge}>⚠️ Low</span>}
                             </div>
-
                             {isEditing ? (
                               <div style={styles.invEditRow}>
                                 <div style={{ flex: 1 }}>
@@ -385,10 +470,10 @@ function AdminPage() {
                                 </div>
                                 <div style={{ ...styles.invStat, backgroundColor: isLow ? "#fff7ed" : "#f0fdf4" }}>
                                   <p style={{ ...styles.invStatNum, color: isLow ? "#ea580c" : "#16a34a" }}>{item.stock || 0}</p>
-                                  <p style={styles.invStatLabel}>In Stock</p>
+                                  <p style={styles.invStatLabel}>Stock</p>
                                 </div>
                                 <div style={styles.invActions}>
-                                  <button onClick={() => { setEditingInv(item); setEditInvPrice(item.price); setEditInvStock(item.stock || 0); }} style={styles.invEditBtn}>✏️ Edit</button>
+                                  <button onClick={() => { setEditingInv(item); setEditInvPrice(item.price); setEditInvStock(item.stock || 0); }} style={styles.invEditBtn}>✏️</button>
                                   <button onClick={() => deleteInventoryItem(item.id)} style={styles.invDeleteBtn}>🗑️</button>
                                 </div>
                               </div>
@@ -410,8 +495,8 @@ function AdminPage() {
                     users.map((u) => (
                       <div key={u.id} style={{ ...styles.card, alignItems: "center" }}>
                         <div style={styles.userAvatar}>{u.email?.charAt(0).toUpperCase()}</div>
-                        <div style={{ flex: 1 }}>
-                          <p style={styles.cardEmail}>👤 {u.email}</p>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ ...styles.cardEmail, wordBreak: "break-all" }}>👤 {u.email}</p>
                           <p style={styles.cardDetail}>📅 Joined: {u.createdAt?.toDate?.().toLocaleString()}</p>
                         </div>
                       </div>
@@ -426,88 +511,101 @@ function AdminPage() {
 
       {/* Lightbox */}
       {selectedImage && (
-        <div onClick={() => setSelectedImage(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, cursor: "zoom-out" }}>
-          <img src={selectedImage} alt="full prescription" style={{ maxWidth: "90%", maxHeight: "90%", borderRadius: "12px", objectFit: "contain" }} />
+        <div onClick={() => setSelectedImage(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.9)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 9999, cursor: "zoom-out", padding: "20px" }}>
+          <img src={selectedImage} alt="full prescription" style={{ maxWidth: "100%", maxHeight: "85vh", borderRadius: "12px", objectFit: "contain" }} />
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginTop: "16px" }}>Tap anywhere to close</p>
         </div>
       )}
+
+      <style>{`
+        @media (max-width: 600px) {
+          .tab-full { display: none !important; }
+          .tab-short { display: inline !important; }
+        }
+      `}</style>
     </div>
   );
 }
 
 const styles = {
   page: { minHeight: "100vh", backgroundColor: "#f8fafc", fontFamily: "'Inter', sans-serif" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 40px", background: "linear-gradient(135deg, #0f172a, #1e293b)", position: "sticky", top: 0, zIndex: 100 },
-  title: { color: "white", fontSize: "24px", fontWeight: "800", margin: 0 },
-  subtitle: { color: "rgba(255,255,255,0.6)", fontSize: "13px", margin: "4px 0 0 0" },
-  closeBtn: { background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "white", fontSize: "14px", fontWeight: "600", cursor: "pointer", borderRadius: "10px", padding: "8px 16px" },
-  body: { maxWidth: "900px", margin: "0 auto", padding: "32px 24px" },
-  statsRow: { display: "flex", gap: "12px", marginBottom: "24px", flexWrap: "wrap" },
-  statCard: { flex: 1, minWidth: "100px", backgroundColor: "#eff6ff", borderRadius: "12px", padding: "16px", textAlign: "center" },
-  statNum: { fontSize: "26px", fontWeight: "800", color: "#1e40af", margin: 0 },
-  statLabel: { fontSize: "12px", color: "#64748b", margin: "4px 0 0 0", fontWeight: "600" },
-  tabs: { display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" },
-  tab: { padding: "10px 18px", border: "none", borderRadius: "10px", cursor: "pointer", fontSize: "14px", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", transition: "all 0.2s", position: "relative" },
-  tabBadge: { padding: "2px 8px", borderRadius: "50px", fontSize: "12px", fontWeight: "700" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", background: "linear-gradient(135deg, #0f172a, #1e293b)", position: "sticky", top: 0, zIndex: 100 },
+  title: { color: "white", fontSize: "20px", fontWeight: "800", margin: 0 },
+  subtitle: { color: "rgba(255,255,255,0.6)", fontSize: "12px", margin: "2px 0 0 0" },
+  closeBtn: { background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "white", fontSize: "14px", fontWeight: "700", cursor: "pointer", borderRadius: "10px", padding: "8px 14px" },
+  body: { maxWidth: "900px", margin: "0 auto", padding: "16px 12px" },
+  statsRow: { display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" },
+  statCard: { flex: 1, minWidth: "60px", backgroundColor: "#eff6ff", borderRadius: "12px", padding: "12px 8px", textAlign: "center" },
+  statNum: { fontSize: "20px", fontWeight: "800", color: "#1e40af", margin: 0 },
+  statLabel: { fontSize: "11px", color: "#64748b", margin: "2px 0 0 0", fontWeight: "600" },
+  tabs: { display: "flex", gap: "6px", marginBottom: "16px", flexWrap: "nowrap", overflowX: "auto" },
+  tab: { padding: "9px 14px", border: "none", borderRadius: "10px", cursor: "pointer", fontSize: "13px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s", position: "relative", whiteSpace: "nowrap", flexShrink: 0 },
+  tabBadge: { padding: "2px 6px", borderRadius: "50px", fontSize: "11px", fontWeight: "700" },
   alertDot: { width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#ea580c", position: "absolute", top: "6px", right: "6px" },
-  content: { backgroundColor: "white", borderRadius: "16px", padding: "24px", border: "1px solid #e2e8f0", minHeight: "400px" },
+  content: { backgroundColor: "white", borderRadius: "16px", padding: "16px", border: "1px solid #e2e8f0", minHeight: "300px" },
   loading: { textAlign: "center", padding: "60px", color: "#94a3b8" },
-  empty: { textAlign: "center", padding: "60px" },
-  emptyText: { fontSize: "18px", fontWeight: "600", color: "#94a3b8" },
-  card: { display: "flex", gap: "16px", backgroundColor: "#f8fafc", borderRadius: "16px", padding: "18px", marginBottom: "12px", border: "1px solid #e2e8f0" },
-  cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" },
-  cardEmail: { fontWeight: "700", color: "#1e293b", fontSize: "15px", margin: 0 },
-  cardDetail: { fontSize: "12px", color: "#64748b", margin: "4px 0" },
-  cardNote: { fontSize: "13px", color: "#1e293b", backgroundColor: "white", padding: "8px 12px", borderRadius: "8px", margin: "8px 0", border: "1px solid #e2e8f0" },
-  statusBadge: { padding: "4px 12px", borderRadius: "50px", fontSize: "12px", fontWeight: "700", textTransform: "capitalize", whiteSpace: "nowrap" },
-  prescImg: { width: "90px", height: "90px", objectFit: "cover", borderRadius: "12px", border: "2px solid #e2e8f0" },
-  btnRow: { display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap" },
-  approveBtn: { padding: "7px 14px", backgroundColor: "#dcfce7", color: "#16a34a", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
-  rejectBtn: { padding: "7px 14px", backgroundColor: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
-  processBtn: { padding: "7px 14px", backgroundColor: "#eff6ff", color: "#2563eb", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
-  printBtn: { padding: "7px 14px", backgroundColor: "#f1f5f9", color: "#1e293b", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
-  downloadBtn: { padding: "7px 14px", backgroundColor: "#eff6ff", color: "#2563eb", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
-  whatsappBtn: { padding: "7px 14px", backgroundColor: "#dcfce7", color: "#16a34a", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
-  morePrescBtn: { padding: "7px 14px", backgroundColor: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
-  prescBlock: { backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "12px", padding: "12px", marginBottom: "12px" },
-  userPrescBlock: { backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: "12px", padding: "12px", marginTop: "10px" },
-  prescBlockLabel: { fontSize: "12px", fontWeight: "700", color: "#374151", margin: "0 0 10px 0" },
-  prescRow: { display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "flex-start" },
+  empty: { textAlign: "center", padding: "40px 20px" },
+  emptyText: { fontSize: "16px", fontWeight: "600", color: "#94a3b8" },
+  // Sort bar
+  sortBar: { display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "8px" },
+  sortBtn: { padding: "6px 12px", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  orderSortWrap: { marginBottom: "14px", display: "flex", flexDirection: "column", gap: "6px" },
+  // Cards
+  card: { display: "flex", gap: "12px", backgroundColor: "#f8fafc", borderRadius: "14px", padding: "14px", marginBottom: "10px", border: "1px solid #e2e8f0" },
+  cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px", gap: "8px" },
+  cardEmail: { fontWeight: "700", color: "#1e293b", fontSize: "14px", margin: 0, wordBreak: "break-all" },
+  cardDetail: { fontSize: "12px", color: "#64748b", margin: "3px 0" },
+  cardNote: { fontSize: "12px", color: "#1e293b", backgroundColor: "white", padding: "6px 10px", borderRadius: "8px", margin: "6px 0", border: "1px solid #e2e8f0" },
+  statusBadge: { padding: "3px 10px", borderRadius: "50px", fontSize: "11px", fontWeight: "700", textTransform: "capitalize", whiteSpace: "nowrap", flexShrink: 0 },
+  prescImg: { width: "80px", height: "80px", objectFit: "cover", borderRadius: "10px", border: "2px solid #e2e8f0", display: "block" },
+  btnRow: { display: "flex", gap: "6px", marginTop: "8px", flexWrap: "wrap" },
+  approveBtn: { padding: "6px 12px", backgroundColor: "#dcfce7", color: "#16a34a", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  rejectBtn: { padding: "6px 12px", backgroundColor: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  processBtn: { padding: "6px 12px", backgroundColor: "#eff6ff", color: "#2563eb", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  printBtn: { padding: "6px 12px", backgroundColor: "#f1f5f9", color: "#1e293b", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  downloadBtn: { padding: "6px 12px", backgroundColor: "#eff6ff", color: "#2563eb", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  whatsappBtn: { padding: "6px 12px", backgroundColor: "#dcfce7", color: "#16a34a", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  morePrescBtn: { padding: "6px 12px", backgroundColor: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  prescBlock: { backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "10px", marginBottom: "10px" },
+  userPrescBlock: { backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: "10px", padding: "10px", marginTop: "8px" },
+  prescBlockLabel: { fontSize: "11px", fontWeight: "700", color: "#374151", margin: "0 0 8px 0" },
+  prescRow: { display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "flex-start" },
   prescDot: { position: "absolute", top: "4px", right: "4px", width: "10px", height: "10px", borderRadius: "50%", border: "2px solid white" },
   prescActions: { display: "flex", gap: "4px", marginTop: "4px" },
   prescApprove: { padding: "3px 6px", backgroundColor: "#dcfce7", color: "#16a34a", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "12px" },
   prescReject: { padding: "3px 6px", backgroundColor: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "12px" },
-  itemsList: { backgroundColor: "white", borderRadius: "10px", padding: "10px 12px", margin: "8px 0", border: "1px solid #f1f5f9" },
-  orderItem: { fontSize: "13px", color: "#1e293b", margin: "4px 0", fontWeight: "500" },
-  orderFooter: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" },
-  orderTotal: { fontSize: "18px", color: "#1e40af" },
-  userAvatar: { width: "48px", height: "48px", borderRadius: "50%", backgroundColor: "#1e40af", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", fontWeight: "800", flexShrink: 0 },
-  // Inventory styles
-  invTopBar: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px", flexWrap: "wrap", gap: "12px" },
-  invSearchInput: { padding: "10px 14px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", outline: "none", width: "220px", fontFamily: "Inter, sans-serif" },
-  invGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" },
-  invCard: { backgroundColor: "#f8fafc", borderRadius: "14px", padding: "14px" },
-  invCardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px" },
-  invName: { fontSize: "14px", fontWeight: "700", color: "#1e293b", margin: 0 },
-  invGeneric: { fontSize: "11px", color: "#94a3b8", margin: "2px 0 0 0" },
-  lowBadge: { backgroundColor: "#fff7ed", color: "#ea580c", fontSize: "11px", fontWeight: "700", padding: "3px 8px", borderRadius: "50px", whiteSpace: "nowrap" },
-  invStatsRow: { display: "flex", gap: "8px", alignItems: "center" },
-  invStat: { flex: 1, backgroundColor: "#eff6ff", borderRadius: "10px", padding: "8px 10px", textAlign: "center" },
-  invStatNum: { fontSize: "16px", fontWeight: "800", color: "#1e40af", margin: 0 },
-  invStatLabel: { fontSize: "10px", color: "#94a3b8", margin: "2px 0 0 0", fontWeight: "600" },
-  invActions: { display: "flex", gap: "6px" },
-  invEditBtn: { padding: "7px 12px", backgroundColor: "#eff6ff", color: "#2563eb", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
-  invDeleteBtn: { padding: "7px 10px", backgroundColor: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px" },
-  invEditRow: { display: "flex", gap: "8px", alignItems: "flex-end" },
-  invEditLabel: { display: "block", fontSize: "11px", fontWeight: "600", color: "#374151", marginBottom: "4px" },
-  invEditInput: { width: "100%", padding: "8px 10px", borderRadius: "8px", border: "2px solid #2563eb", fontSize: "14px", outline: "none", boxSizing: "border-box", fontWeight: "600" },
-  invSaveBtn: { padding: "8px 12px", backgroundColor: "#1e40af", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
-  invCancelBtn: { padding: "8px 10px", backgroundColor: "#f1f5f9", color: "#64748b", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "14px" },
-  deniedPage: { minHeight: "100vh", backgroundColor: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" },
-  deniedBox: { backgroundColor: "white", borderRadius: "24px", padding: "48px 40px", textAlign: "center", maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.1)" },
-  deniedIcon: { fontSize: "64px", marginBottom: "16px" },
-  deniedTitle: { fontSize: "28px", fontWeight: "800", color: "#dc2626", marginBottom: "12px" },
-  deniedText: { color: "#64748b", fontSize: "15px", marginBottom: "28px" },
-  deniedBtn: { padding: "14px 32px", backgroundColor: "#f1f5f9", color: "#1e293b", border: "none", borderRadius: "12px", fontSize: "16px", fontWeight: "700", cursor: "pointer" },
+  itemsList: { backgroundColor: "white", borderRadius: "10px", padding: "8px 10px", margin: "6px 0", border: "1px solid #f1f5f9" },
+  orderItem: { fontSize: "12px", color: "#1e293b", margin: "3px 0", fontWeight: "500" },
+  orderFooter: { marginTop: "8px" },
+  orderTotal: { fontSize: "16px", color: "#1e40af" },
+  userAvatar: { width: "44px", height: "44px", borderRadius: "50%", backgroundColor: "#1e40af", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", fontWeight: "800", flexShrink: 0 },
+  // Inventory
+  invTopBar: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px", flexWrap: "wrap", gap: "10px" },
+  invSearchInput: { padding: "9px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", outline: "none", width: "180px", fontFamily: "Inter, sans-serif" },
+  invGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "10px" },
+  invCard: { backgroundColor: "#f8fafc", borderRadius: "12px", padding: "12px" },
+  invCardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" },
+  invName: { fontSize: "13px", fontWeight: "700", color: "#1e293b", margin: 0, wordBreak: "break-word" },
+  invGeneric: { fontSize: "10px", color: "#94a3b8", margin: "2px 0 0 0" },
+  lowBadge: { backgroundColor: "#fff7ed", color: "#ea580c", fontSize: "10px", fontWeight: "700", padding: "2px 7px", borderRadius: "50px", whiteSpace: "nowrap", flexShrink: 0 },
+  invStatsRow: { display: "flex", gap: "6px", alignItems: "center" },
+  invStat: { flex: 1, backgroundColor: "#eff6ff", borderRadius: "8px", padding: "6px 8px", textAlign: "center" },
+  invStatNum: { fontSize: "15px", fontWeight: "800", color: "#1e40af", margin: 0 },
+  invStatLabel: { fontSize: "10px", color: "#94a3b8", margin: "1px 0 0 0", fontWeight: "600" },
+  invActions: { display: "flex", gap: "4px" },
+  invEditBtn: { padding: "6px 10px", backgroundColor: "#eff6ff", color: "#2563eb", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
+  invDeleteBtn: { padding: "6px 8px", backgroundColor: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px" },
+  invEditRow: { display: "flex", gap: "6px", alignItems: "flex-end" },
+  invEditLabel: { display: "block", fontSize: "10px", fontWeight: "600", color: "#374151", marginBottom: "3px" },
+  invEditInput: { width: "100%", padding: "7px 8px", borderRadius: "8px", border: "2px solid #2563eb", fontSize: "13px", outline: "none", boxSizing: "border-box", fontWeight: "600" },
+  invSaveBtn: { padding: "7px 10px", backgroundColor: "#1e40af", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
+  invCancelBtn: { padding: "7px 8px", backgroundColor: "#f1f5f9", color: "#64748b", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px" },
+  deniedPage: { minHeight: "100vh", backgroundColor: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" },
+  deniedBox: { backgroundColor: "white", borderRadius: "24px", padding: "40px 28px", textAlign: "center", maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.1)" },
+  deniedIcon: { fontSize: "56px", marginBottom: "12px" },
+  deniedTitle: { fontSize: "24px", fontWeight: "800", color: "#dc2626", marginBottom: "10px" },
+  deniedText: { color: "#64748b", fontSize: "14px", marginBottom: "24px" },
+  deniedBtn: { padding: "12px 28px", backgroundColor: "#f1f5f9", color: "#1e293b", border: "none", borderRadius: "12px", fontSize: "15px", fontWeight: "700", cursor: "pointer" },
 };
 
 export default AdminPage;

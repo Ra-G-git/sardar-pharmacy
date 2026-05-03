@@ -1,6 +1,12 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+// Helper: resolve unit label for an item respecting byPiece flag
+function resolveUnitLabel(item) {
+  if (item.byPiece) return "Piece";
+  return item.unit || "-";
+}
+
 export function generateReceipt(order) {
   const doc = new jsPDF();
 
@@ -58,12 +64,12 @@ export function generateReceipt(order) {
 
   // Items table
   const tableRows = order.items?.map((item) => {
-    const packInfo = item.unit || "-";
+    const unitLabel = resolveUnitLabel(item);
     return [
       item.name,
       item.category || "",
       item.strength || "",
-      packInfo,
+      unitLabel,
       item.quantity,
       `Tk ${parseFloat(item.price).toFixed(2)}`,
       `Tk ${(parseFloat(item.price) * item.quantity).toFixed(2)}`,
@@ -105,7 +111,6 @@ export function generateReceipt(order) {
   let summaryY = finalY;
 
   if (discount > 0) {
-    // Subtotal row
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(100, 116, 139);
@@ -113,7 +118,6 @@ export function generateReceipt(order) {
     doc.text(`Tk ${subtotal.toFixed(2)}`, 193, summaryY, { align: "right" });
     summaryY += 7;
 
-    // Discount row
     doc.setTextColor(22, 163, 74);
     doc.text(`Discount (${discount}%):`, 140, summaryY);
     doc.text(`-Tk ${discountAmt.toFixed(2)}`, 193, summaryY, { align: "right" });
@@ -168,11 +172,11 @@ export function printReceipt(order) {
   const total = parseFloat(order.total);
 
   const itemRows = order.items?.map((item) => {
-    const packDisplay = item.unit || "-";
+    const unitLabel = resolveUnitLabel(item);
     return `
       <tr>
         <td>${item.name}${item.strength ? `<br/><span class="sub">${item.strength}</span>` : ""}</td>
-        <td class="center">${packDisplay}</td>
+        <td class="center">${unitLabel}</td>
         <td class="center">${item.quantity}</td>
         <td class="right">${parseFloat(item.price).toFixed(2)}</td>
         <td class="right">${(parseFloat(item.price) * item.quantity).toFixed(2)}</td>
@@ -193,7 +197,7 @@ export function printReceipt(order) {
 
   const noteRow = order.note ? `
     <div class="divider"></div>
-    <div class="note">📝 Note: ${order.note}</div>
+    <div class="note">Note: ${order.note}</div>
   ` : "";
 
   const html = `
@@ -330,9 +334,10 @@ export function whatsappReceipt(order) {
   const discountAmt = (subtotal * discount) / 100;
   const total = parseFloat(order.total);
 
-  const items = order.items?.map(
-    (item) => `• ${item.name}${item.unit_size > 1 ? ` (${item.unit})` : ""} x${item.quantity} = ৳${(parseFloat(item.price) * item.quantity).toFixed(2)}`
-  ).join("\n") || "";
+  const items = order.items?.map((item) => {
+    const unitLabel = resolveUnitLabel(item);
+    return `• ${item.name} (${unitLabel}) x${item.quantity} = Tk ${(parseFloat(item.price) * item.quantity).toFixed(2)}`;
+  }).join("\n") || "";
 
   const discountLine = discount > 0
     ? `\nSubtotal: Tk ${subtotal.toFixed(2)}\nDiscount (${discount}%): -Tk ${discountAmt.toFixed(2)}`

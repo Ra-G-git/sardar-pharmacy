@@ -30,6 +30,7 @@ function POSPage() {
   const [editingItem, setEditingItem] = useState(null);
   const [editPrice, setEditPrice] = useState("");
   const [editStock, setEditStock] = useState("");
+  const [editUnit, setEditUnit] = useState("");
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((u) => setUser(u));
@@ -68,7 +69,6 @@ function POSPage() {
     setHistoryLoading(false);
   }
 
-  // Add to cart — use inventory price if available
   async function addToCart(med) {
     let priceToUse = med.price;
     try {
@@ -81,7 +81,14 @@ function POSPage() {
     setCart((prev) => {
       const exists = prev.find((item) => item.slug === med.slug);
       if (exists) return prev.map((item) => item.slug === med.slug ? { ...item, quantity: item.quantity + 1 } : item);
-      return [...prev, { ...med, price: priceToUse, quantity: 1 }];
+      return [...prev, {
+        ...med,
+        price: priceToUse,
+        quantity: 1,
+        byPiece: false,
+        stripPrice: priceToUse,
+        originalUnit: med.unit || "",
+      }];
     });
     setSearch("");
     setFiltered([]);
@@ -97,10 +104,33 @@ function POSPage() {
     setCart((prev) => prev.filter((item) => item.slug !== slug));
   }
 
+  // Toggle piece/strip directly from cart row
+  function togglePiece(slug) {
+    setCart((prev) => prev.map((item) => {
+      if (item.slug !== slug) return item;
+      const unitSize = parseFloat(item.unit_size) || 1;
+      if (unitSize <= 1) return item;
+      const newByPiece = !item.byPiece;
+      const stripPrice = item.stripPrice || item.price;
+      const effectivePrice = newByPiece
+        ? (parseFloat(stripPrice) / unitSize).toFixed(2)
+        : parseFloat(stripPrice).toFixed(2);
+      return {
+        ...item,
+        byPiece: newByPiece,
+        stripPrice,
+        price: effectivePrice,
+        unit: newByPiece ? "Piece" : (item.originalUnit || item.unit),
+        originalUnit: item.originalUnit || item.unit,
+      };
+    }));
+  }
+
   function openEdit(item) {
     setEditingItem(item);
-    setEditPrice(item.price);
+    setEditPrice(item.stripPrice || item.price);
     setEditStock("");
+    setEditUnit(item.originalUnit || item.unit || "");
   }
 
   async function saveEdit() {
@@ -108,6 +138,7 @@ function POSPage() {
     const newPrice = parseFloat(editPrice);
     if (isNaN(newPrice) || newPrice <= 0) return;
     const slug = editingItem.slug;
+    const newUnit = editUnit.trim() || editingItem.unit || "";
 
     try {
       const invRef = doc(db, "inventory", slug);
@@ -115,7 +146,7 @@ function POSPage() {
       const stockVal = editStock !== "" ? parseInt(editStock) : null;
 
       if (invSnap.exists()) {
-        const updateData = { price: newPrice.toFixed(2), updatedAt: serverTimestamp() };
+        const updateData = { price: newPrice.toFixed(2), unit: newUnit, updatedAt: serverTimestamp() };
         if (stockVal !== null) updateData.stock = stockVal;
         await updateDoc(invRef, updateData);
       } else {
@@ -126,7 +157,7 @@ function POSPage() {
           category_name: editingItem.category_name,
           strength: editingItem.strength || "",
           manufacturer_name: editingItem.manufacturer_name || "",
-          unit: editingItem.unit || "",
+          unit: newUnit,
           unit_size: editingItem.unit_size || "",
           price: newPrice.toFixed(2),
           stock: stockVal !== null ? stockVal : 0,
@@ -134,15 +165,27 @@ function POSPage() {
         });
       }
 
-      // Update price in cart immediately
-      setCart((prev) => prev.map((item) =>
-        item.slug === slug ? { ...item, price: newPrice.toFixed(2) } : item
-      ));
+      // Update cart — respect current byPiece state
+      setCart((prev) => prev.map((item) => {
+        if (item.slug !== slug) return item;
+        const unitSize = parseFloat(item.unit_size) || 1;
+        const effectivePrice = item.byPiece && unitSize > 1
+          ? (newPrice / unitSize).toFixed(2)
+          : newPrice.toFixed(2);
+        return {
+          ...item,
+          price: effectivePrice,
+          stripPrice: newPrice.toFixed(2),
+          unit: item.byPiece ? "Piece" : newUnit,
+          originalUnit: newUnit,
+        };
+      }));
     } catch (err) { console.error("Inventory save failed:", err); }
 
     setEditingItem(null);
     setEditPrice("");
     setEditStock("");
+    setEditUnit("");
   }
 
   const subtotal = cart.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0);
@@ -153,7 +196,6 @@ function POSPage() {
     if (cart.length === 0) return;
     setLoading(true);
     try {
-      // Auto-deduct stock for inventory items
       for (const item of cart) {
         try {
           const invRef = doc(db, "inventory", item.slug);
@@ -166,8 +208,14 @@ function POSPage() {
       }
 
       const orderItems = cart.map((item) => ({
-        name: item.medicine_name, category: item.category_name, price: item.price,
-        quantity: item.quantity, unit: item.unit, unit_size: item.unit_size, strength: item.strength,
+        name: item.medicine_name,
+        category: item.category_name,
+        price: item.price,
+        quantity: item.quantity,
+        unit: item.unit,
+        unit_size: item.unit_size,
+        strength: item.strength,
+        byPiece: item.byPiece || false,
       }));
 
       const ref = await addDoc(collection(db, "orders"), {
@@ -315,7 +363,7 @@ function POSPage() {
                 </div>
               </div>
 
-              {/* Right Panel */}
+              {/* Right Panel — Cart */}
               <div style={styles.rightPanel}>
                 <div style={styles.cartHeader}>
                   <h3 style={styles.sectionTitle}>🛒 Cart {cart.length > 0 && <span style={styles.cartBadge}>{cart.length}</span>}</h3>
@@ -335,7 +383,21 @@ function POSPage() {
                           <span style={{ fontSize: "22px", minWidth: "28px" }}>{getMedicineEmoji(item.category_name)}</span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <p style={styles.cartName}>{item.medicine_name}</p>
-                            <p style={styles.cartDetail}>৳{item.price}/{getUnitShort(item)}{item.unit_size > 1 ? ` • Pack of ${item.unit_size}` : ""}</p>
+                            <div style={styles.cartDetailRow}>
+                              <span style={styles.cartDetailText}>৳{item.price}/{item.byPiece ? "Piece" : (item.unit || "pc")}</span>
+                              {parseFloat(item.unit_size) > 1 && (
+                                <button
+                                  onClick={() => togglePiece(item.slug)}
+                                  style={{
+                                    ...styles.pieceToggleBtn,
+                                    backgroundColor: item.byPiece ? "#1e40af" : "#e2e8f0",
+                                    color: item.byPiece ? "white" : "#475569",
+                                  }}
+                                >
+                                  {item.byPiece ? "Piece" : "Strip"}
+                                </button>
+                              )}
+                            </div>
                           </div>
                           <div style={styles.cartQty}>
                             <button style={styles.qtyBtn} onClick={() => updateQty(item.slug, item.quantity - 1)}>−</button>
@@ -422,7 +484,10 @@ function POSPage() {
                   <div style={styles.historyItems}>
                     {sale.items?.map((item, i) => (
                       <div key={i} style={styles.historyItemRow}>
-                        <span>{getMedicineEmoji(item.category)} {item.name}{item.unit_size > 1 ? ` (Pack of ${item.unit_size})` : ""}</span>
+                        <span>
+                          {getMedicineEmoji(item.category)} {item.name}
+                          {item.byPiece ? " (Piece)" : item.unit_size > 1 ? ` (${item.unit})` : ""}
+                        </span>
                         <span>×{item.quantity} = ৳{(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
                       </div>
                     ))}
@@ -439,7 +504,7 @@ function POSPage() {
         </div>
       )}
 
-      {/* Edit Price/Stock Modal */}
+      {/* Edit Modal */}
       {editingItem && (
         <div style={styles.modalOverlay} onClick={() => setEditingItem(null)}>
           <div style={styles.editModal} onClick={(e) => e.stopPropagation()}>
@@ -453,7 +518,7 @@ function POSPage() {
             <div style={styles.editModalBody}>
               <div style={styles.editField}>
                 <label style={styles.editLabel}>Price (৳)</label>
-                <p style={styles.editHint}>CSV price: ৳{editingItem.price} — enter your actual selling price</p>
+                <p style={styles.editHint}>Strip/pack price — piece price auto-calculated from cart toggle</p>
                 <input type="number" min="0" step="0.01" value={editPrice} onChange={(e) => setEditPrice(e.target.value)} style={styles.editInput} autoFocus />
               </div>
               <div style={styles.editField}>
@@ -461,9 +526,14 @@ function POSPage() {
                 <p style={styles.editHint}>How many units do you have right now?</p>
                 <input type="number" min="0" placeholder="e.g. 50" value={editStock} onChange={(e) => setEditStock(e.target.value)} style={styles.editInput} />
               </div>
+              <div style={styles.editField}>
+                <label style={styles.editLabel}>Unit Label</label>
+                <p style={styles.editHint}>e.g. Tablet, Capsule, Syrup — auto becomes "Piece" when toggled</p>
+                <input type="text" placeholder={editingItem.unit || "e.g. Tablet"} value={editUnit} onChange={(e) => setEditUnit(e.target.value)} style={styles.editInput} />
+              </div>
               <div style={styles.editInfo}>
                 <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>
-                  💡 Price saves to your inventory and applies immediately. Stock auto-deducts on every sale.
+                  💡 Use the Strip/Piece toggle on the cart item to switch sell mode instantly.
                 </p>
               </div>
             </div>
@@ -512,8 +582,10 @@ const styles = {
   emptyCart: { textAlign: "center", padding: "40px 20px", flex: 1 },
   cartItems: { marginBottom: "12px", maxHeight: "320px", overflowY: "auto" },
   cartItem: { display: "flex", alignItems: "center", gap: "8px", padding: "10px", backgroundColor: "#f8fafc", borderRadius: "10px", marginBottom: "6px", border: "1px solid #f1f5f9" },
-  cartName: { fontSize: "13px", fontWeight: "700", color: "#1e293b", margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-  cartDetail: { fontSize: "11px", color: "#94a3b8", margin: "2px 0 0 0" },
+  cartName: { fontSize: "13px", fontWeight: "700", color: "#1e293b", margin: "0 0 3px 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  cartDetailRow: { display: "flex", alignItems: "center", gap: "5px" },
+  cartDetailText: { fontSize: "11px", color: "#94a3b8" },
+  pieceToggleBtn: { fontSize: "9px", fontWeight: "800", padding: "2px 6px", borderRadius: "4px", border: "none", cursor: "pointer", letterSpacing: "0.3px" },
   cartQty: { display: "flex", alignItems: "center", gap: "4px", backgroundColor: "#eff6ff", borderRadius: "8px", padding: "3px" },
   qtyBtn: { width: "26px", height: "26px", borderRadius: "6px", border: "none", backgroundColor: "#2563eb", color: "white", fontSize: "16px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },
   qtyInput: { width: "40px", textAlign: "center", border: "none", backgroundColor: "white", fontSize: "14px", fontWeight: "700", color: "#1e40af", outline: "none", borderRadius: "4px", padding: "2px" },
@@ -561,7 +633,6 @@ const styles = {
   historyItemRow: { display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#1e293b", padding: "4px 0", borderBottom: "1px solid #f1f5f9", fontWeight: "500" },
   historyBtns: { display: "flex", gap: "8px", flexWrap: "wrap" },
   centered: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", textAlign: "center", padding: "20px" },
-  // Edit Modal
   modalOverlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 9000, display: "flex", alignItems: "center", justifyContent: "center", padding: "20px", backdropFilter: "blur(4px)" },
   editModal: { backgroundColor: "white", borderRadius: "20px", width: "100%", maxWidth: "420px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", overflow: "hidden" },
   editModalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 24px", background: "linear-gradient(135deg, #0f172a, #1e293b)" },
