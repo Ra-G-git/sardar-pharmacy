@@ -22,7 +22,9 @@ function POSPage() {
   const [salesHistory, setSalesHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [user, setUser] = useState(null);
-  const [discount, setDiscount] = useState(0);
+  const [discount, setDiscount] = useState(0);         // percentage value
+  const [discountType, setDiscountType] = useState("pct"); // "pct" | "flat"
+  const [flatDiscount, setFlatDiscount] = useState("");    // taka amount string
   const [note, setNote] = useState("");
   const [historySearch, setHistorySearch] = useState("");
   // Mobile: show cart drawer
@@ -182,7 +184,9 @@ function POSPage() {
   }
 
   const subtotal = cart.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0);
-  const discountAmt = (subtotal * discount) / 100;
+  const discountAmt = discountType === "flat"
+    ? Math.min(parseFloat(flatDiscount) || 0, subtotal)
+    : (subtotal * discount) / 100;
   const total = subtotal - discountAmt;
 
   async function handleCheckout() {
@@ -208,12 +212,13 @@ function POSPage() {
         userId: user?.uid || "pos", userEmail: user?.email || "pos",
         name: customerName || "Walk-in Customer", phone: customerPhone || "N/A",
         address: "In-store purchase", paymentMethod, orderType: "pos",
-        discount, note, subtotal: subtotal.toFixed(2), items: orderItems,
+        discount, discountType, flatDiscount: discountType === "flat" ? (parseFloat(flatDiscount) || 0) : 0,
+        note, subtotal: subtotal.toFixed(2), items: orderItems,
         total: total.toFixed(2), status: "delivered", createdAt: serverTimestamp(),
       });
       setLastOrder({
         id: ref.id, name: customerName || "Walk-in Customer", phone: customerPhone || "N/A",
-        address: "In-store purchase", paymentMethod, discount, note,
+        address: "In-store purchase", paymentMethod, discount, discountType, flatDiscount: discountType === "flat" ? (parseFloat(flatDiscount) || 0) : 0, note,
         subtotal: subtotal.toFixed(2), items: orderItems,
         total: total.toFixed(2), status: "delivered", createdAt: new Date().toLocaleString(),
       });
@@ -222,6 +227,8 @@ function POSPage() {
       setCustomerName("");
       setCustomerPhone("");
       setDiscount(0);
+      setDiscountType("pct");
+      setFlatDiscount("");
       setNote("");
       setShowCart(false);
     } catch (err) { console.error(err); }
@@ -284,10 +291,10 @@ function POSPage() {
                 <h2 style={styles.successTitle}>Sale Complete!</h2>
                 <div style={styles.successDetails}>
                   <div style={styles.successRow}><span>Subtotal</span><span>৳{lastOrder.subtotal}</span></div>
-                  {lastOrder.discount > 0 && (
+                  {(lastOrder.discount > 0 || lastOrder.flatDiscount > 0) && (
                     <div style={{ ...styles.successRow, color: "#16a34a" }}>
-                      <span>Discount ({lastOrder.discount}%)</span>
-                      <span>-৳{((parseFloat(lastOrder.subtotal) * lastOrder.discount) / 100).toFixed(2)}</span>
+                      <span>Discount {lastOrder.discountType === "flat" ? `(৳${parseFloat(lastOrder.flatDiscount).toFixed(2)})` : `(${lastOrder.discount}%)`}</span>
+                      <span>-৳{(parseFloat(lastOrder.subtotal) - parseFloat(lastOrder.total)).toFixed(2)}</span>
                     </div>
                   )}
                   <div style={{ ...styles.successRow, ...styles.successTotalRow }}><span>Total</span><span>৳{lastOrder.total}</span></div>
@@ -378,6 +385,10 @@ function POSPage() {
                     cart={cart}
                     discount={discount}
                     setDiscount={setDiscount}
+                    discountType={discountType}
+                    setDiscountType={setDiscountType}
+                    flatDiscount={flatDiscount}
+                    setFlatDiscount={setFlatDiscount}
                     subtotal={subtotal}
                     discountAmt={discountAmt}
                     total={total}
@@ -414,6 +425,10 @@ function POSPage() {
                         cart={cart}
                         discount={discount}
                         setDiscount={setDiscount}
+                        discountType={discountType}
+                        setDiscountType={setDiscountType}
+                        flatDiscount={flatDiscount}
+                        setFlatDiscount={setFlatDiscount}
                         subtotal={subtotal}
                         discountAmt={discountAmt}
                         total={total}
@@ -554,7 +569,7 @@ function POSPage() {
 }
 
 // Extracted CartPanel component to avoid duplication
-function CartPanel({ cart, discount, setDiscount, subtotal, discountAmt, total, loading, updateQty, removeFromCart, togglePiece, openEdit, setCart, handleCheckout, styles, inDrawer }) {
+function CartPanel({ cart, discount, setDiscount, discountType, setDiscountType, flatDiscount, setFlatDiscount, subtotal, discountAmt, total, loading, updateQty, removeFromCart, togglePiece, openEdit, setCart, handleCheckout, styles, inDrawer }) {
   return (
     <>
       <div style={styles.cartHeader}>
@@ -604,20 +619,58 @@ function CartPanel({ cart, discount, setDiscount, subtotal, discountAmt, total, 
           </div>
 
           <div style={styles.discountRow}>
-            <label style={styles.discountLabel}>Discount %</label>
-            <div style={styles.discountControls}>
-              {[0, 5, 10, 15, 20].map((d) => (
-                <button key={d} onClick={() => setDiscount(d)} style={{ ...styles.discountBtn, backgroundColor: discount === d ? "#1e40af" : "#f1f5f9", color: discount === d ? "white" : "#1e293b" }}>{d}%</button>
-              ))}
-              <input type="number" min="0" max="100" value={discount} onChange={(e) => setDiscount(parseInt(e.target.value) || 0)} style={styles.discountInput} placeholder="%" />
+            {/* Toggle: % vs ৳ */}
+            <div style={styles.discountToggleRow}>
+              <label style={styles.discountLabel}>Discount</label>
+              <div style={styles.discountToggle}>
+                <button
+                  onClick={() => setDiscountType("pct")}
+                  style={{ ...styles.discountToggleBtn, backgroundColor: discountType === "pct" ? "#1e40af" : "#f1f5f9", color: discountType === "pct" ? "white" : "#475569" }}
+                >% Percent</button>
+                <button
+                  onClick={() => setDiscountType("flat")}
+                  style={{ ...styles.discountToggleBtn, backgroundColor: discountType === "flat" ? "#1e40af" : "#f1f5f9", color: discountType === "flat" ? "white" : "#475569" }}
+                >৳ Amount</button>
+              </div>
             </div>
+
+            {discountType === "pct" ? (
+              <div style={styles.discountControls}>
+                {[0, 5, 7].map((d) => (
+                  <button key={d} onClick={() => setDiscount(d)} style={{ ...styles.discountBtn, backgroundColor: discount === d ? "#1e40af" : "#f1f5f9", color: discount === d ? "white" : "#1e293b" }}>{d}%</button>
+                ))}
+                <input
+                  type="number" min="0" max="100"
+                  value={discount || ""}
+                  onChange={(e) => setDiscount(parseInt(e.target.value) || 0)}
+                  style={styles.discountInput}
+                  placeholder="Custom %"
+                />
+              </div>
+            ) : (
+              <div style={styles.discountControls}>
+                <input
+                  type="number" min="0"
+                  value={flatDiscount}
+                  onChange={(e) => setFlatDiscount(e.target.value)}
+                  style={{ ...styles.discountInput, width: "100%", flex: 1 }}
+                  placeholder="Enter amount in ৳"
+                />
+                {parseFloat(flatDiscount) > 0 && (
+                  <span style={styles.flatHint}>
+                    = {subtotal > 0 ? ((parseFloat(flatDiscount) / subtotal) * 100).toFixed(1) : 0}% off
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div style={styles.cartFooter}>
             <div style={styles.summaryRow}><span style={styles.summaryLabel}>Subtotal</span><span style={styles.summaryValue}>৳{subtotal.toFixed(2)}</span></div>
-            {discount > 0 && (
+            {discountAmt > 0 && (
               <div style={{ ...styles.summaryRow, color: "#16a34a" }}>
-                <span>Discount ({discount}%)</span><span>-৳{discountAmt.toFixed(2)}</span>
+                <span>Discount {discountType === "pct" ? `(${discount}%)` : `(৳${parseFloat(flatDiscount).toFixed(2)})`}</span>
+                <span>-৳{discountAmt.toFixed(2)}</span>
               </div>
             )}
             <div style={styles.totalRow}>
@@ -682,10 +735,14 @@ const styles = {
   editBtn: { background: "none", border: "none", cursor: "pointer", fontSize: "13px", padding: "2px 3px" },
   removeBtn: { background: "none", border: "none", cursor: "pointer", fontSize: "13px", padding: "2px 3px" },
   discountRow: { marginBottom: "10px", padding: "10px", backgroundColor: "#f8fafc", borderRadius: "9px" },
-  discountLabel: { fontSize: "12px", fontWeight: "600", color: "#374151", display: "block", marginBottom: "7px" },
+  discountToggleRow: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" },
+  discountToggle: { display: "flex", gap: "4px", backgroundColor: "#e2e8f0", borderRadius: "8px", padding: "3px" },
+  discountToggleBtn: { padding: "5px 10px", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "700", cursor: "pointer", transition: "all 0.15s" },
+  discountLabel: { fontSize: "12px", fontWeight: "700", color: "#374151" },
   discountControls: { display: "flex", gap: "5px", flexWrap: "wrap", alignItems: "center" },
-  discountBtn: { padding: "6px 9px", border: "none", borderRadius: "7px", fontSize: "12px", fontWeight: "600", cursor: "pointer" },
-  discountInput: { width: "58px", padding: "6px 7px", borderRadius: "7px", border: "2px solid #e2e8f0", fontSize: "12px", outline: "none", textAlign: "center" },
+  discountBtn: { padding: "6px 11px", border: "none", borderRadius: "7px", fontSize: "13px", fontWeight: "700", cursor: "pointer" },
+  discountInput: { width: "80px", padding: "6px 7px", borderRadius: "7px", border: "2px solid #e2e8f0", fontSize: "12px", outline: "none", textAlign: "center" },
+  flatHint: { fontSize: "11px", color: "#16a34a", fontWeight: "700", alignSelf: "center", whiteSpace: "nowrap" },
   cartFooter: { borderTop: "1px solid #e2e8f0", paddingTop: "10px" },
   summaryRow: { display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#64748b", marginBottom: "5px" },
   summaryLabel: { color: "#64748b" },
