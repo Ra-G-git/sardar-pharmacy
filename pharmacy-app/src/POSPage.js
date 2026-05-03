@@ -27,6 +27,8 @@ function POSPage() {
   const [historySearch, setHistorySearch] = useState("");
   // Mobile: show cart drawer
   const [showCart, setShowCart] = useState(false);
+  // Infinite scroll for suggestions
+  const [visibleCount, setVisibleCount] = useState(10);
 
   // Edit modal
   const [editingItem, setEditingItem] = useState(null);
@@ -48,13 +50,14 @@ function POSPage() {
   }, []);
 
   useEffect(() => {
-    if (search.length < 2) { setFiltered([]); return; }
+    if (search.length < 2) { setFiltered([]); setVisibleCount(10); return; }
     const results = medicines.filter((med) =>
       med.medicine_name?.toLowerCase().includes(search.toLowerCase()) ||
       med.generic_name?.toLowerCase().includes(search.toLowerCase()) ||
       med.category_name?.toLowerCase().includes(search.toLowerCase())
-    ).slice(0, 10);
+    );
     setFiltered(results);
+    setVisibleCount(10);
   }, [search, medicines]);
 
   useEffect(() => {
@@ -317,8 +320,16 @@ function POSPage() {
                       autoFocus
                     />
                     {filtered.length > 0 && (
-                      <div style={styles.suggestions}>
-                        {filtered.map((med, i) => (
+                      <div
+                        style={styles.suggestions}
+                        onScroll={(e) => {
+                          const el = e.currentTarget;
+                          if (el.scrollHeight - el.scrollTop - el.clientHeight < 60) {
+                            setVisibleCount((c) => Math.min(c + 10, filtered.length));
+                          }
+                        }}
+                      >
+                        {filtered.slice(0, visibleCount).map((med, i) => (
                           <button key={i} style={styles.suggestion} onClick={() => addToCart(med)}>
                             <span style={{ fontSize: "22px", minWidth: "30px" }}>{getMedicineEmoji(med.category_name)}</span>
                             <div style={{ flex: 1, minWidth: 0 }}>
@@ -331,6 +342,11 @@ function POSPage() {
                             </div>
                           </button>
                         ))}
+                        {visibleCount < filtered.length && (
+                          <div style={{ padding: "10px", textAlign: "center", fontSize: "12px", color: "#94a3b8" }}>
+                            ↓ Scroll for more ({filtered.length - visibleCount} remaining)
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -641,7 +657,7 @@ const styles = {
   section: { backgroundColor: "white", borderRadius: "14px", padding: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" },
   sectionTitle: { fontSize: "15px", fontWeight: "700", color: "#1e293b", marginBottom: "12px", marginTop: 0 },
   searchInput: { width: "100%", padding: "13px 14px", borderRadius: "10px", border: "2px solid #2563eb", fontSize: "15px", outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" },
-  suggestions: { marginTop: "6px", backgroundColor: "white", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 6px 20px rgba(0,0,0,0.1)" },
+  suggestions: { marginTop: "6px", backgroundColor: "white", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 6px 20px rgba(0,0,0,0.1)", maxHeight: "320px", overflowY: "auto" },
   suggestion: { display: "flex", alignItems: "center", gap: "10px", width: "100%", padding: "11px 14px", border: "none", borderBottom: "1px solid #f1f5f9", backgroundColor: "white", cursor: "pointer", textAlign: "left" },
   inputRow: { display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" },
   input: { flex: "1 1 140px", padding: "11px 14px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" },

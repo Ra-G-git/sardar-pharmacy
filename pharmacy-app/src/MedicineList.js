@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Papa from "papaparse";
 import { useCart } from "./CartContext";
 import { getMedicineEmoji, getUnitLabel, getUnitShort } from "./medicineUtils";
 
 function MedicineCard({ med, addToCart, cartItem }) {
-  // Derive qty and added directly from cart so it resets when cart clears
   const qty = cartItem ? cartItem.quantity : 0;
   const added = qty > 0;
 
@@ -60,8 +59,9 @@ function MedicineCard({ med, addToCart, cartItem }) {
 
 function MedicineList() {
   const [medicines, setMedicines] = useState([]);
+  const [randomSample, setRandomSample] = useState([]);  // 12 random for homepage
   const [search, setSearch] = useState("");
-  const [filtered, setFiltered] = useState([]);
+  const [committed, setCommitted] = useState(false);      // true after Enter pressed
   const { addToCart, cart } = useCart();
 
   useEffect(() => {
@@ -69,34 +69,61 @@ function MedicineList() {
       download: true,
       header: true,
       complete: (result) => {
-        setMedicines(result.data);
-        setFiltered(result.data.slice(0, 12));
+        const data = result.data.filter((m) => m.medicine_name);
+        setMedicines(data);
+        // Pick 12 random medicines for the default view
+        const shuffled = [...data].sort(() => Math.random() - 0.5);
+        setRandomSample(shuffled.slice(0, 12));
       },
     });
   }, []);
 
-  useEffect(() => {
-    if (search === "") {
-      setFiltered(medicines.slice(0, 12));
-    } else {
-      const results = medicines.filter((med) =>
-        med.medicine_name?.toLowerCase().includes(search.toLowerCase()) ||
-        med.generic_name?.toLowerCase().includes(search.toLowerCase()) ||
-        med.category_name?.toLowerCase().includes(search.toLowerCase())
-      );
-      setFiltered(results.slice(0, 12));
-    }
+  // Full filtered list (all matches)
+  const allMatches = useMemo(() => {
+    if (!search) return [];
+    const q = search.toLowerCase();
+    return medicines.filter((med) =>
+      med.medicine_name?.toLowerCase().includes(q) ||
+      med.generic_name?.toLowerCase().includes(q) ||
+      med.category_name?.toLowerCase().includes(q)
+    );
   }, [search, medicines]);
 
-  // Find this medicine's cart entry by slug so card stays in sync with cart
+  // Reset committed state whenever search text changes
+  useEffect(() => {
+    setCommitted(false);
+  }, [search]);
+
+  // What to actually render:
+  // - No search typed → 12 random
+  // - Typing (not committed) → first 12 matches
+  // - Enter pressed (committed) → all matches
+  const displayed = useMemo(() => {
+    if (!search) return randomSample;
+    if (committed) return allMatches;
+    return allMatches.slice(0, 12);
+  }, [search, committed, allMatches, randomSample]);
+
+  function handleKeyDown(e) {
+    if (e.key === "Enter" && search) setCommitted(true);
+  }
+
+  function handleClear() {
+    setSearch("");
+    setCommitted(false);
+  }
+
   function getCartItem(med) {
     return cart.find((item) => item.slug === med.slug) || null;
   }
 
-  // Pass through to CartContext — decrement flag handled there
-  function handleAddToCart(med) {
-    addToCart(med);
-  }
+  // Label shown below search bar
+  const searchHint = useMemo(() => {
+    if (!search) return null;
+    if (committed) return `${allMatches.length} result${allMatches.length !== 1 ? "s" : ""} for "${search}"`;
+    if (allMatches.length === 0) return null;
+    return `${allMatches.length} result${allMatches.length !== 1 ? "s" : ""} — press Enter to see all`;
+  }, [search, committed, allMatches.length]);
 
   return (
     <div style={styles.container}>
@@ -110,26 +137,32 @@ function MedicineList() {
             placeholder="Search by name, generic or category..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={handleKeyDown}
             style={styles.input}
           />
           {search && (
-            <button style={styles.clearBtn} onClick={() => setSearch("")}>✕</button>
+            <button style={styles.clearBtn} onClick={handleClear}>✕</button>
           )}
         </div>
+        {searchHint && (
+          <p style={{ ...styles.resultCount, color: committed ? "#2563eb" : "#94a3b8" }}>
+            {searchHint}
+          </p>
+        )}
       </div>
 
-      {filtered.length === 0 ? (
+      {displayed.length === 0 && search ? (
         <div style={styles.noResult}>
           <p style={styles.noResultText}>😕 No medicines found for "{search}"</p>
           <p style={styles.noResultSub}>Try a different name or category</p>
         </div>
       ) : (
         <div style={styles.grid}>
-          {filtered.map((med, index) => (
+          {displayed.map((med, index) => (
             <MedicineCard
-              key={index}
+              key={med.slug || index}
               med={med}
-              addToCart={handleAddToCart}
+              addToCart={addToCart}
               cartItem={getCartItem(med)}
             />
           ))}
@@ -142,7 +175,6 @@ function MedicineList() {
 const styles = {
   container: {
     padding: "60px 24px",
-    // No backgroundColor here — prevents white bleed against the page
   },
   header: {
     textAlign: "center",
@@ -189,6 +221,21 @@ const styles = {
     cursor: "pointer",
     color: "#94a3b8",
     fontSize: "16px",
+  },
+  resultCount: {
+    marginTop: "10px",
+    fontSize: "13px",
+    fontWeight: "600",
+    transition: "color 0.2s",
+  },
+  kbd: {
+    backgroundColor: "#f1f5f9",
+    border: "1px solid #cbd5e1",
+    borderRadius: "4px",
+    padding: "1px 6px",
+    fontSize: "12px",
+    fontFamily: "monospace",
+    color: "#475569",
   },
   grid: {
     display: "grid",
