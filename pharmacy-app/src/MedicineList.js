@@ -6,6 +6,8 @@ import { getMedicineEmoji, getUnitLabel, getUnitShort } from "./medicineUtils";
 function MedicineCard({ med, addToCart, cartItem }) {
   const qty = cartItem ? cartItem.quantity : 0;
   const added = qty > 0;
+  const [editing, setEditing] = useState(false);
+  const [inputVal, setInputVal] = useState("");
 
   function handleAdd() {
     addToCart({ ...med, quantity: 1 });
@@ -17,6 +19,28 @@ function MedicineCard({ med, addToCart, cartItem }) {
 
   function handleDecrement() {
     addToCart({ ...med, quantity: -1, decrement: true });
+  }
+
+  function handleQtyClick() {
+    setInputVal(String(qty));
+    setEditing(true);
+  }
+
+  function handleQtyBlur(e) {
+    commitEdit(e.target.value);
+  }
+
+  function handleQtyKeyDown(e) {
+    if (e.key === "Enter") e.target.blur();
+    if (e.key === "Escape") setEditing(false);
+  }
+
+  function commitEdit(val) {
+    const parsed = parseInt(val ?? inputVal, 10);
+    if (!isNaN(parsed) && parsed >= 0 && parsed !== qty) {
+      addToCart({ ...med, setQuantity: true, quantity: parsed });
+    }
+    setEditing(false);
   }
 
   return (
@@ -48,7 +72,28 @@ function MedicineCard({ med, addToCart, cartItem }) {
         ) : (
           <div style={styles.qtyControls}>
             <button style={styles.qtyBtn} onClick={handleDecrement}>−</button>
-            <span style={styles.qtyNum}>{qty}</span>
+
+            {editing ? (
+              <input
+                autoFocus
+                type="number"
+                min="0"
+                value={inputVal}
+                onChange={(e) => setInputVal(e.target.value)}
+                onBlur={handleQtyBlur}
+                onKeyDown={handleQtyKeyDown}
+                style={styles.qtyInput}
+              />
+            ) : (
+              <span
+                style={styles.qtyNum}
+                onClick={handleQtyClick}
+                title="Click to edit quantity"
+              >
+                {qty}
+              </span>
+            )}
+
             <button style={styles.qtyBtn} onClick={handleIncrement}>+</button>
           </div>
         )}
@@ -59,9 +104,9 @@ function MedicineCard({ med, addToCart, cartItem }) {
 
 function MedicineList() {
   const [medicines, setMedicines] = useState([]);
-  const [randomSample, setRandomSample] = useState([]);  // 12 random for homepage
+  const [randomSample, setRandomSample] = useState([]);
   const [search, setSearch] = useState("");
-  const [committed, setCommitted] = useState(false);      // true after Enter pressed
+  const [committed, setCommitted] = useState(false);
   const { addToCart, cart } = useCart();
 
   useEffect(() => {
@@ -71,14 +116,12 @@ function MedicineList() {
       complete: (result) => {
         const data = result.data.filter((m) => m.medicine_name);
         setMedicines(data);
-        // Pick 12 random medicines for the default view
         const shuffled = [...data].sort(() => Math.random() - 0.5);
         setRandomSample(shuffled.slice(0, 12));
       },
     });
   }, []);
 
-  // Full filtered list (all matches)
   const allMatches = useMemo(() => {
     if (!search) return [];
     const q = search.toLowerCase();
@@ -89,15 +132,10 @@ function MedicineList() {
     );
   }, [search, medicines]);
 
-  // Reset committed state whenever search text changes
   useEffect(() => {
     setCommitted(false);
   }, [search]);
 
-  // What to actually render:
-  // - No search typed → 12 random
-  // - Typing (not committed) → first 12 matches
-  // - Enter pressed (committed) → all matches
   const displayed = useMemo(() => {
     if (!search) return randomSample;
     if (committed) return allMatches;
@@ -117,7 +155,6 @@ function MedicineList() {
     return cart.find((item) => item.slug === med.slug) || null;
   }
 
-  // Label shown below search bar
   const searchHint = useMemo(() => {
     if (!search) return null;
     if (committed) return `${allMatches.length} result${allMatches.length !== 1 ? "s" : ""} for "${search}"`;
@@ -227,15 +264,6 @@ const styles = {
     fontSize: "13px",
     fontWeight: "600",
     transition: "color 0.2s",
-  },
-  kbd: {
-    backgroundColor: "#f1f5f9",
-    border: "1px solid #cbd5e1",
-    borderRadius: "4px",
-    padding: "1px 6px",
-    fontSize: "12px",
-    fontFamily: "monospace",
-    color: "#475569",
   },
   grid: {
     display: "grid",
@@ -350,6 +378,21 @@ const styles = {
     color: "#1e40af",
     minWidth: "24px",
     textAlign: "center",
+    cursor: "text",
+    borderBottom: "1px dashed #93c5fd",
+    paddingBottom: "1px",
+  },
+  qtyInput: {
+    width: "40px",
+    textAlign: "center",
+    fontSize: "15px",
+    fontWeight: "800",
+    color: "#1e40af",
+    border: "none",
+    borderBottom: "2px solid #2563eb",
+    backgroundColor: "transparent",
+    outline: "none",
+    MozAppearance: "textfield",
   },
   noResult: {
     textAlign: "center",

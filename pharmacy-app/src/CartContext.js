@@ -9,6 +9,21 @@ export function CartProvider({ children }) {
     setCart((prev) => {
       const exists = prev.find((item) => item.slug === medicine.slug);
 
+      // Direct quantity set (from manual input)
+      if (medicine.setQuantity) {
+        if (medicine.quantity === 0) {
+          return prev.filter((item) => item.slug !== medicine.slug);
+        }
+        if (exists) {
+          return prev.map((item) =>
+            item.slug === medicine.slug
+              ? { ...item, quantity: medicine.quantity }
+              : item
+          );
+        }
+        return [...prev, { ...medicine, quantity: medicine.quantity }];
+      }
+
       // Decrement mode: reduce by 1 or remove if qty hits 0
       if (medicine.decrement) {
         if (!exists) return prev;
