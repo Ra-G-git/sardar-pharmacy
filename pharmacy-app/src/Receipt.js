@@ -358,7 +358,7 @@ export function printReceipt(order) {
         setTimeout(function () { window.print(); }, 350);
       });
     }
-  <\/script>
+  </' + 'script>
 </body>
 </html>`;
 

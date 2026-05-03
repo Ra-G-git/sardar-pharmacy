@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { db, auth } from "./firebase";
 import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, where, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
-import { getMedicineEmoji, getUnitLabel, getUnitShort } from "./medicineUtils";
+import { getMedicineEmoji, getUnitLabel } from "./medicineUtils";
 import { downloadReceipt, printReceipt, whatsappReceipt } from "./Receipt";
 import Papa from "papaparse";
 
@@ -622,7 +622,6 @@ const styles = {
   headerTab: { padding: "8px 14px", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600", backgroundColor: "rgba(255,255,255,0.1)", color: "white" },
   headerTabActive: { backgroundColor: "white", color: "#1e293b" },
 
-  // Sale layout — flex on desktop, single column on mobile
   saleLayout: { display: "flex", gap: "16px", padding: "16px", maxWidth: "1400px", margin: "0 auto" },
   leftPanel: { flex: 1, display: "flex", flexDirection: "column", gap: "12px", minWidth: 0 },
   rightPanel: { width: "400px", flexShrink: 0, backgroundColor: "white", borderRadius: "14px", padding: "16px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)", alignSelf: "flex-start", position: "sticky", top: "72px" },
@@ -638,7 +637,6 @@ const styles = {
   paymentOptions: { display: "flex", gap: "6px", flexWrap: "wrap" },
   paymentBtn: { padding: "9px 14px", borderRadius: "9px", fontSize: "13px", fontWeight: "600", cursor: "pointer", transition: "all 0.2s" },
 
-  // Cart
   cartHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" },
   cartBadge: { backgroundColor: "#eff6ff", color: "#2563eb", padding: "2px 7px", borderRadius: "50px", fontSize: "12px", marginLeft: "5px" },
   clearCartBtn: { padding: "5px 10px", backgroundColor: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "7px", fontSize: "12px", fontWeight: "600", cursor: "pointer" },
@@ -669,17 +667,14 @@ const styles = {
   totalAmt: { fontSize: "22px", fontWeight: "800", color: "#1e40af" },
   checkoutBtn: { width: "100%", padding: "14px", background: "linear-gradient(135deg, #1e40af, #2563eb)", color: "white", border: "none", borderRadius: "11px", fontSize: "15px", fontWeight: "700", boxShadow: "0 4px 14px rgba(37,99,235,0.3)", fontFamily: "Inter, sans-serif", cursor: "pointer" },
 
-  // Mobile floating cart button
   floatingCartBtn: { position: "fixed", bottom: "20px", left: "50%", transform: "translateX(-50%)", background: "linear-gradient(135deg, #1e40af, #2563eb)", color: "white", border: "none", borderRadius: "50px", padding: "14px 28px", fontSize: "15px", fontWeight: "700", boxShadow: "0 6px 24px rgba(37,99,235,0.5)", cursor: "pointer", zIndex: 200, whiteSpace: "nowrap" },
 
-  // Cart drawer (mobile)
   cartDrawerOverlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 300, display: "flex", alignItems: "flex-end" },
   cartDrawer: { backgroundColor: "white", borderRadius: "20px 20px 0 0", width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", paddingTop: "12px" },
   cartDrawerHandle: { width: "40px", height: "4px", backgroundColor: "#e2e8f0", borderRadius: "2px", margin: "0 auto 12px" },
   cartDrawerHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 16px 12px", borderBottom: "1px solid #e2e8f0" },
   cartDrawerClose: { background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "#64748b", padding: "4px 8px" },
 
-  // Success
   successScreen: { display: "flex", justifyContent: "center", alignItems: "flex-start", minHeight: "calc(100vh - 70px)", padding: "20px" },
   successBox: { backgroundColor: "white", borderRadius: "20px", padding: "36px 24px", textAlign: "center", maxWidth: "440px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.1)", marginTop: "20px" },
   successTitle: { fontSize: "24px", fontWeight: "800", color: "#1e293b", marginBottom: "16px" },
@@ -692,7 +687,6 @@ const styles = {
   whatsappBtn: { padding: "10px 14px", backgroundColor: "#16a34a", color: "white", border: "none", borderRadius: "10px", fontSize: "13px", fontWeight: "700", cursor: "pointer" },
   newSaleBtn: { width: "100%", padding: "13px", background: "linear-gradient(135deg, #1e40af, #2563eb)", color: "white", border: "none", borderRadius: "11px", fontSize: "15px", fontWeight: "700", cursor: "pointer" },
 
-  // History
   historyPanel: { padding: "16px", maxWidth: "1400px", margin: "0 auto" },
   historyHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px", flexWrap: "wrap", gap: "10px" },
   historySearchInput: { padding: "9px 14px", borderRadius: "9px", border: "2px solid #e2e8f0", fontSize: "14px", outline: "none", width: "220px", fontFamily: "Inter, sans-serif" },
@@ -710,7 +704,6 @@ const styles = {
   historyItemRow: { display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#1e293b", padding: "3px 0", borderBottom: "1px solid #f1f5f9", fontWeight: "500" },
   historyBtns: { display: "flex", gap: "6px", flexWrap: "wrap" },
 
-  // Edit modal
   centered: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", textAlign: "center", padding: "20px" },
   modalOverlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 9000, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0", backdropFilter: "blur(4px)" },
   editModal: { backgroundColor: "white", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: "480px", boxShadow: "0 -8px 40px rgba(0,0,0,0.2)", overflow: "hidden" },
