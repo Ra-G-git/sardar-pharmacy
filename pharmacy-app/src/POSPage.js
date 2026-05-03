@@ -302,9 +302,9 @@ function POSPage() {
           ) : (
             <>
               {/* ── Desktop: side-by-side | Mobile: stacked ── */}
-              <div style={styles.saleLayout}>
+              <div style={styles.saleLayout} className="pos-sale-layout">
                 {/* Left Panel */}
-                <div style={styles.leftPanel}>
+                <div style={styles.leftPanel} className="pos-left-panel">
                   {/* Search */}
                   <div style={styles.section}>
                     <h3 style={styles.sectionTitle}>🔍 Search Medicine</h3>
@@ -343,9 +343,9 @@ function POSPage() {
                       <input type="tel" placeholder="Phone (for WhatsApp)" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={styles.input} />
                     </div>
                     <textarea placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} style={styles.textarea} />
-                    <div style={styles.paymentOptions}>
+                    <div style={styles.paymentOptions} className="pos-payment-options">
                       {[{ id: "cash", label: "💵 Cash" }, { id: "bkash", label: "📱 bKash" }, { id: "nagad", label: "📱 Nagad" }, { id: "card", label: "💳 Card" }].map((method) => (
-                        <button key={method.id} onClick={() => setPaymentMethod(method.id)} style={{
+                        <button key={method.id} onClick={() => setPaymentMethod(method.id)} className="pos-payment-btn" style={{
                           ...styles.paymentBtn,
                           backgroundColor: paymentMethod === method.id ? "#1e40af" : "#f1f5f9",
                           color: paymentMethod === method.id ? "white" : "#1e293b",
@@ -357,7 +357,7 @@ function POSPage() {
                 </div>
 
                 {/* Right Panel — Cart (desktop: sticky sidebar; mobile: inline below) */}
-                <div style={styles.rightPanel}>
+                <div style={styles.rightPanel} className="pos-right-panel">
                   <CartPanel
                     cart={cart}
                     discount={discount}
@@ -519,6 +519,18 @@ function POSPage() {
         }
         @media (max-width: 768px) {
           .pos-right-panel { display: none !important; }
+          .pos-sale-layout {
+            flex-direction: column !important;
+            padding: 10px !important;
+          }
+          .pos-payment-options {
+            flex-direction: row !important;
+            flex-wrap: wrap !important;
+          }
+          .pos-payment-btn {
+            flex: 1 1 calc(50% - 6px) !important;
+            text-align: center !important;
+          }
         }
       `}</style>
     </div>
