@@ -18,17 +18,28 @@ function AdminPage() {
   const [user, setUser] = useState(null);
   const [expandedUserPresc, setExpandedUserPresc] = useState(null);
 
-  // Sorting
+  // Prescription sorting & filtering
   const [prescSort, setPrescSort] = useState("newest");
+  const [prescStatusFilter, setPrescStatusFilter] = useState("all");
+  const [prescSearch, setPrescSearch] = useState("");
+
+  // Order sorting & filtering
   const [orderSort, setOrderSort] = useState("newest");
   const [orderStatusFilter, setOrderStatusFilter] = useState("all");
+  const [orderSearch, setOrderSearch] = useState("");
+  const [orderPaymentFilter, setOrderPaymentFilter] = useState("all");
 
-  // Inventory edit state
+  // User sorting & filtering
+  const [userSort, setUserSort] = useState("newest");
+  const [userSearch, setUserSearch] = useState("");
+
+  // Inventory
   const [editingInv, setEditingInv] = useState(null);
   const [editInvPrice, setEditInvPrice] = useState("");
   const [editInvStock, setEditInvStock] = useState("");
   const [invSearch, setInvSearch] = useState("");
   const [savingInv, setSavingInv] = useState(false);
+  const [invStockFilter, setInvStockFilter] = useState("all");
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((u) => {
@@ -107,20 +118,50 @@ function AdminPage() {
     });
   }
 
+  // ── Prescriptions ──────────────────────────────────────────────
   const sortedPrescriptions = (() => {
     let list = [...prescriptions];
-    if (prescSort === "pending") list = list.filter(p => p.status === "pending");
-    else if (prescSort === "approved") list = list.filter(p => p.status === "approved");
-    else if (prescSort === "rejected") list = list.filter(p => p.status === "rejected");
-    else list = sortByDate(list, "uploadedAt", prescSort);
+    // Status filter
+    if (prescStatusFilter !== "all") list = list.filter(p => p.status === prescStatusFilter);
+    // Search
+    if (prescSearch.trim()) {
+      const q = prescSearch.toLowerCase();
+      list = list.filter(p =>
+        p.userEmail?.toLowerCase().includes(q) ||
+        p.note?.toLowerCase().includes(q)
+      );
+    }
+    // Sort
+    list = sortByDate(list, "uploadedAt", prescSort);
     return list;
   })();
 
+  // ── Orders ──────────────────────────────────────────────────────
   const sortedOrders = (() => {
-    let list = orderStatusFilter === "all"
-      ? [...orders]
-      : orders.filter(o => o.status === orderStatusFilter);
+    let list = [...orders];
+    if (orderStatusFilter !== "all") list = list.filter(o => o.status === orderStatusFilter);
+    if (orderPaymentFilter !== "all") list = list.filter(o => o.paymentMethod === orderPaymentFilter);
+    if (orderSearch.trim()) {
+      const q = orderSearch.toLowerCase();
+      list = list.filter(o =>
+        o.name?.toLowerCase().includes(q) ||
+        o.userEmail?.toLowerCase().includes(q) ||
+        o.phone?.includes(q) ||
+        o.id?.toLowerCase().includes(q)
+      );
+    }
     list = sortByDate(list, "createdAt", orderSort);
+    return list;
+  })();
+
+  // ── Users ────────────────────────────────────────────────────────
+  const sortedUsers = (() => {
+    let list = [...users];
+    if (userSearch.trim()) {
+      const q = userSearch.toLowerCase();
+      list = list.filter(u => u.email?.toLowerCase().includes(q));
+    }
+    list = sortByDate(list, "createdAt", userSort);
     return list;
   })();
 
@@ -142,34 +183,53 @@ function AdminPage() {
   const pendingPrescriptions = prescriptions.filter((p) => p.status === "pending").length;
   const totalRevenue = orders.filter((o) => o.status === "delivered").reduce((sum, o) => sum + parseFloat(o.total || 0), 0);
 
-  const filteredInventory = inventory.filter((item) =>
-    item.medicine_name?.toLowerCase().includes(invSearch.toLowerCase()) ||
-    item.generic_name?.toLowerCase().includes(invSearch.toLowerCase())
-  );
+  const filteredInventory = (() => {
+    let list = inventory.filter((item) =>
+      item.medicine_name?.toLowerCase().includes(invSearch.toLowerCase()) ||
+      item.generic_name?.toLowerCase().includes(invSearch.toLowerCase())
+    );
+    if (invStockFilter === "low") list = list.filter(i => (i.stock || 0) <= LOW_STOCK_THRESHOLD);
+    if (invStockFilter === "ok") list = list.filter(i => (i.stock || 0) > LOW_STOCK_THRESHOLD);
+    return list;
+  })();
 
   const tabs = [
-    { id: "prescriptions", label: "📋 Rx", fullLabel: "📋 Prescriptions", count: prescriptions.length },
-    { id: "orders", label: "🛒 Orders", fullLabel: "🛒 Orders", count: orders.length },
-    { id: "inventory", label: "📦 Stock", fullLabel: "📦 Inventory", count: inventory.length, alert: lowStockItems.length > 0 },
-    { id: "users", label: "👤 Users", fullLabel: "👤 Users", count: users.length },
+    { id: "prescriptions", label: "📋", fullLabel: "📋 Prescriptions", count: prescriptions.length, alert: pendingPrescriptions > 0 },
+    { id: "orders", label: "🛒", fullLabel: "🛒 Orders", count: orders.length, alert: pendingOrders > 0 },
+    { id: "inventory", label: "📦", fullLabel: "📦 Inventory", count: inventory.length, alert: lowStockItems.length > 0 },
+    { id: "users", label: "👤", fullLabel: "👤 Users", count: users.length },
   ];
 
-  const SortBar = ({ value, onChange, options }) => (
-    <div style={styles.sortBar}>
-      {options.map(opt => (
-        <button
-          key={opt.value}
-          onClick={() => onChange(opt.value)}
-          style={{
-            ...styles.sortBtn,
-            backgroundColor: value === opt.value ? "#1e40af" : "#f1f5f9",
-            color: value === opt.value ? "white" : "#64748b",
-          }}
-        >
-          {opt.label}
-        </button>
-      ))}
+  // Reusable pill filter row
+  const PillFilter = ({ label, value, onChange, options }) => (
+    <div style={styles.filterGroup}>
+      {label && <span style={styles.filterLabel}>{label}</span>}
+      <div style={styles.pillRow}>
+        {options.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            style={{
+              ...styles.pill,
+              backgroundColor: value === opt.value ? "#1e40af" : "#f1f5f9",
+              color: value === opt.value ? "white" : "#64748b",
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
     </div>
+  );
+
+  const SearchBar = ({ value, onChange, placeholder }) => (
+    <input
+      type="text"
+      placeholder={placeholder || "Search..."}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      style={styles.searchBar}
+    />
   );
 
   return (
@@ -179,7 +239,10 @@ function AdminPage() {
           <h1 style={styles.title}>🔧 Admin</h1>
           <p style={styles.subtitle}>Sardar Pharmacy</p>
         </div>
-        <button onClick={() => window.close()} style={styles.closeBtn}>✕</button>
+        <div style={styles.headerRight}>
+          <button onClick={fetchData} style={styles.refreshBtn}>🔄</button>
+          <button onClick={() => window.close()} style={styles.closeBtn}>✕</button>
+        </div>
       </div>
 
       <div style={styles.body}>
@@ -232,22 +295,36 @@ function AdminPage() {
             <div style={styles.loading}><p style={{ fontSize: "48px" }}>⏳</p><p>Loading...</p></div>
           ) : (
             <>
-              {/* Prescriptions Tab */}
+              {/* ── Prescriptions Tab ── */}
               {activeTab === "prescriptions" && (
                 <div>
-                  <SortBar
-                    value={prescSort}
-                    onChange={setPrescSort}
-                    options={[
-                      { value: "newest", label: "Newest" },
-                      { value: "oldest", label: "Oldest" },
-                      { value: "pending", label: "⏳ Pending" },
-                      { value: "approved", label: "✅ Approved" },
-                      { value: "rejected", label: "❌ Rejected" },
-                    ]}
-                  />
+                  <div style={styles.filterPanel}>
+                    <SearchBar value={prescSearch} onChange={setPrescSearch} placeholder="Search by email or note..." />
+                    <PillFilter
+                      label="Status"
+                      value={prescStatusFilter}
+                      onChange={setPrescStatusFilter}
+                      options={[
+                        { value: "all", label: "All" },
+                        { value: "pending", label: "⏳ Pending" },
+                        { value: "approved", label: "✅ Approved" },
+                        { value: "rejected", label: "❌ Rejected" },
+                      ]}
+                    />
+                    <PillFilter
+                      label="Sort"
+                      value={prescSort}
+                      onChange={setPrescSort}
+                      options={[
+                        { value: "newest", label: "Newest" },
+                        { value: "oldest", label: "Oldest" },
+                      ]}
+                    />
+                    <p style={styles.resultCount}>{sortedPrescriptions.length} result{sortedPrescriptions.length !== 1 ? "s" : ""}</p>
+                  </div>
+
                   {sortedPrescriptions.length === 0 ? (
-                    <div style={styles.empty}><p style={{ fontSize: "48px" }}>📋</p><p style={styles.emptyText}>No prescriptions</p></div>
+                    <div style={styles.empty}><p style={{ fontSize: "48px" }}>📋</p><p style={styles.emptyText}>No prescriptions found</p></div>
                   ) : (
                     sortedPrescriptions.map((p) => {
                       const statusStyle = getStatusColor(p.status);
@@ -275,19 +352,13 @@ function AdminPage() {
                 </div>
               )}
 
-              {/* Orders Tab */}
+              {/* ── Orders Tab ── */}
               {activeTab === "orders" && (
                 <div>
-                  <div style={styles.orderSortWrap}>
-                    <SortBar
-                      value={orderSort}
-                      onChange={setOrderSort}
-                      options={[
-                        { value: "newest", label: "Newest" },
-                        { value: "oldest", label: "Oldest" },
-                      ]}
-                    />
-                    <SortBar
+                  <div style={styles.filterPanel}>
+                    <SearchBar value={orderSearch} onChange={setOrderSearch} placeholder="Search name, phone, order ID..." />
+                    <PillFilter
+                      label="Status"
                       value={orderStatusFilter}
                       onChange={setOrderStatusFilter}
                       options={[
@@ -298,9 +369,32 @@ function AdminPage() {
                         { value: "cancelled", label: "❌ Cancelled" },
                       ]}
                     />
+                    <PillFilter
+                      label="Payment"
+                      value={orderPaymentFilter}
+                      onChange={setOrderPaymentFilter}
+                      options={[
+                        { value: "all", label: "All" },
+                        { value: "cash", label: "💵 Cash" },
+                        { value: "bkash", label: "📱 bKash" },
+                        { value: "nagad", label: "📱 Nagad" },
+                        { value: "card", label: "💳 Card" },
+                      ]}
+                    />
+                    <PillFilter
+                      label="Sort"
+                      value={orderSort}
+                      onChange={setOrderSort}
+                      options={[
+                        { value: "newest", label: "Newest" },
+                        { value: "oldest", label: "Oldest" },
+                      ]}
+                    />
+                    <p style={styles.resultCount}>{sortedOrders.length} result{sortedOrders.length !== 1 ? "s" : ""}</p>
                   </div>
+
                   {sortedOrders.length === 0 ? (
-                    <div style={styles.empty}><p style={{ fontSize: "48px" }}>🛒</p><p style={styles.emptyText}>No orders</p></div>
+                    <div style={styles.empty}><p style={{ fontSize: "48px" }}>🛒</p><p style={styles.emptyText}>No orders found</p></div>
                   ) : (
                     sortedOrders.map((o) => {
                       const statusStyle = getStatusColor(o.status);
@@ -359,9 +453,9 @@ function AdminPage() {
                               <strong style={styles.orderTotal}>Total: ৳{o.total}</strong>
                             </div>
                             <div style={styles.btnRow}>
-                              <button onClick={() => updateOrderStatus(o.id, "processing")} style={styles.processBtn}>🔄</button>
+                              <button onClick={() => updateOrderStatus(o.id, "processing")} style={styles.processBtn}>🔄 Processing</button>
                               <button onClick={() => updateOrderStatus(o.id, "delivered")} style={styles.approveBtn}>✅ Delivered</button>
-                              <button onClick={() => updateOrderStatus(o.id, "cancelled")} style={styles.rejectBtn}>❌</button>
+                              <button onClick={() => updateOrderStatus(o.id, "cancelled")} style={styles.rejectBtn}>❌ Cancel</button>
                             </div>
                             <div style={styles.btnRow}>
                               <button onClick={() => printReceipt(receiptData)} style={styles.printBtn}>🖨️ Print</button>
@@ -402,33 +496,30 @@ function AdminPage() {
                 </div>
               )}
 
-              {/* Inventory Tab */}
+              {/* ── Inventory Tab ── */}
               {activeTab === "inventory" && (
                 <div>
-                  <div style={styles.invTopBar}>
-                    <div>
-                      <p style={{ fontSize: "13px", color: "#64748b", margin: 0 }}>
-                        {inventory.length} medicines • Prices override CSV
-                      </p>
-                      {lowStockItems.length > 0 && (
-                        <p style={{ fontSize: "12px", color: "#ea580c", margin: "4px 0 0 0", fontWeight: "600" }}>
-                          ⚠️ {lowStockItems.length} low stock (≤{LOW_STOCK_THRESHOLD})
-                        </p>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Search..."
-                      value={invSearch}
-                      onChange={(e) => setInvSearch(e.target.value)}
-                      style={styles.invSearchInput}
+                  <div style={styles.filterPanel}>
+                    <SearchBar value={invSearch} onChange={setInvSearch} placeholder="Search medicine..." />
+                    <PillFilter
+                      label="Stock"
+                      value={invStockFilter}
+                      onChange={setInvStockFilter}
+                      options={[
+                        { value: "all", label: "All" },
+                        { value: "low", label: "⚠️ Low" },
+                        { value: "ok", label: "✅ OK" },
+                      ]}
                     />
+                    <p style={styles.resultCount}>
+                      {filteredInventory.length} medicine{filteredInventory.length !== 1 ? "s" : ""}
+                      {lowStockItems.length > 0 && <span style={{ color: "#ea580c", marginLeft: "8px" }}>• {lowStockItems.length} low stock</span>}
+                    </p>
                   </div>
-                  {inventory.length === 0 ? (
+                  {filteredInventory.length === 0 ? (
                     <div style={styles.empty}>
                       <p style={{ fontSize: "48px" }}>📦</p>
-                      <p style={styles.emptyText}>No inventory yet</p>
-                      <p style={{ fontSize: "13px", color: "#94a3b8", marginTop: "8px" }}>Go to POS → add medicine → ✏️ to set price & stock</p>
+                      <p style={styles.emptyText}>No inventory found</p>
                     </div>
                   ) : (
                     <div style={styles.invGrid}>
@@ -486,21 +577,42 @@ function AdminPage() {
                 </div>
               )}
 
-              {/* Users Tab */}
+              {/* ── Users Tab ── */}
               {activeTab === "users" && (
                 <div>
-                  {users.length === 0 ? (
-                    <div style={styles.empty}><p style={{ fontSize: "48px" }}>👤</p><p style={styles.emptyText}>No users yet</p></div>
+                  <div style={styles.filterPanel}>
+                    <SearchBar value={userSearch} onChange={setUserSearch} placeholder="Search by email..." />
+                    <PillFilter
+                      label="Sort"
+                      value={userSort}
+                      onChange={setUserSort}
+                      options={[
+                        { value: "newest", label: "Newest First" },
+                        { value: "oldest", label: "Oldest First" },
+                      ]}
+                    />
+                    <p style={styles.resultCount}>{sortedUsers.length} user{sortedUsers.length !== 1 ? "s" : ""}</p>
+                  </div>
+                  {sortedUsers.length === 0 ? (
+                    <div style={styles.empty}><p style={{ fontSize: "48px" }}>👤</p><p style={styles.emptyText}>No users found</p></div>
                   ) : (
-                    users.map((u) => (
-                      <div key={u.id} style={{ ...styles.card, alignItems: "center" }}>
-                        <div style={styles.userAvatar}>{u.email?.charAt(0).toUpperCase()}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ ...styles.cardEmail, wordBreak: "break-all" }}>👤 {u.email}</p>
-                          <p style={styles.cardDetail}>📅 Joined: {u.createdAt?.toDate?.().toLocaleString()}</p>
+                    sortedUsers.map((u) => {
+                      const userOrders = orders.filter(o => o.userEmail === u.email);
+                      const userSpend = userOrders.filter(o => o.status === "delivered").reduce((sum, o) => sum + parseFloat(o.total || 0), 0);
+                      return (
+                        <div key={u.id} style={{ ...styles.card, alignItems: "center" }}>
+                          <div style={styles.userAvatar}>{u.email?.charAt(0).toUpperCase()}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ ...styles.cardEmail, wordBreak: "break-all" }}>👤 {u.email}</p>
+                            <p style={styles.cardDetail}>📅 Joined: {u.createdAt?.toDate?.().toLocaleString()}</p>
+                            <div style={styles.userStats}>
+                              <span style={styles.userStatPill}>🛒 {userOrders.length} orders</span>
+                              {userSpend > 0 && <span style={{ ...styles.userStatPill, backgroundColor: "#f0fdf4", color: "#16a34a" }}>৳{userSpend.toFixed(0)} spent</span>}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               )}
@@ -522,6 +634,9 @@ function AdminPage() {
           .tab-full { display: none !important; }
           .tab-short { display: inline !important; }
         }
+        @media (min-width: 601px) {
+          .tab-short { display: none !important; }
+        }
       `}</style>
     </div>
   );
@@ -529,44 +644,52 @@ function AdminPage() {
 
 const styles = {
   page: { minHeight: "100vh", backgroundColor: "#f8fafc", fontFamily: "'Inter', sans-serif" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", background: "linear-gradient(135deg, #0f172a, #1e293b)", position: "sticky", top: 0, zIndex: 100 },
-  title: { color: "white", fontSize: "20px", fontWeight: "800", margin: 0 },
-  subtitle: { color: "rgba(255,255,255,0.6)", fontSize: "12px", margin: "2px 0 0 0" },
-  closeBtn: { background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "white", fontSize: "14px", fontWeight: "700", cursor: "pointer", borderRadius: "10px", padding: "8px 14px" },
-  body: { maxWidth: "900px", margin: "0 auto", padding: "16px 12px" },
-  statsRow: { display: "flex", gap: "8px", marginBottom: "16px", flexWrap: "wrap" },
-  statCard: { flex: 1, minWidth: "60px", backgroundColor: "#eff6ff", borderRadius: "12px", padding: "12px 8px", textAlign: "center" },
-  statNum: { fontSize: "20px", fontWeight: "800", color: "#1e40af", margin: 0 },
-  statLabel: { fontSize: "11px", color: "#64748b", margin: "2px 0 0 0", fontWeight: "600" },
-  tabs: { display: "flex", gap: "6px", marginBottom: "16px", flexWrap: "nowrap", overflowX: "auto" },
-  tab: { padding: "9px 14px", border: "none", borderRadius: "10px", cursor: "pointer", fontSize: "13px", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s", position: "relative", whiteSpace: "nowrap", flexShrink: 0 },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", background: "linear-gradient(135deg, #0f172a, #1e293b)", position: "sticky", top: 0, zIndex: 100 },
+  title: { color: "white", fontSize: "18px", fontWeight: "800", margin: 0 },
+  subtitle: { color: "rgba(255,255,255,0.6)", fontSize: "11px", margin: "2px 0 0 0" },
+  headerRight: { display: "flex", gap: "8px", alignItems: "center" },
+  refreshBtn: { background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "white", fontSize: "14px", cursor: "pointer", borderRadius: "10px", padding: "7px 12px" },
+  closeBtn: { background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)", color: "white", fontSize: "14px", fontWeight: "700", cursor: "pointer", borderRadius: "10px", padding: "7px 12px" },
+  body: { maxWidth: "900px", margin: "0 auto", padding: "12px 10px" },
+  statsRow: { display: "flex", gap: "6px", marginBottom: "12px", flexWrap: "wrap" },
+  statCard: { flex: "1 1 55px", backgroundColor: "#eff6ff", borderRadius: "10px", padding: "10px 6px", textAlign: "center" },
+  statNum: { fontSize: "18px", fontWeight: "800", color: "#1e40af", margin: 0 },
+  statLabel: { fontSize: "10px", color: "#64748b", margin: "2px 0 0 0", fontWeight: "600" },
+  tabs: { display: "flex", gap: "5px", marginBottom: "12px", flexWrap: "nowrap", overflowX: "auto", WebkitOverflowScrolling: "touch" },
+  tab: { padding: "9px 12px", border: "none", borderRadius: "10px", cursor: "pointer", fontSize: "13px", fontWeight: "600", display: "flex", alignItems: "center", gap: "5px", transition: "all 0.2s", position: "relative", whiteSpace: "nowrap", flexShrink: 0 },
   tabBadge: { padding: "2px 6px", borderRadius: "50px", fontSize: "11px", fontWeight: "700" },
-  alertDot: { width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#ea580c", position: "absolute", top: "6px", right: "6px" },
-  content: { backgroundColor: "white", borderRadius: "16px", padding: "16px", border: "1px solid #e2e8f0", minHeight: "300px" },
+  alertDot: { width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#ea580c", position: "absolute", top: "5px", right: "5px" },
+  content: { backgroundColor: "white", borderRadius: "14px", padding: "14px", border: "1px solid #e2e8f0", minHeight: "300px" },
   loading: { textAlign: "center", padding: "60px", color: "#94a3b8" },
   empty: { textAlign: "center", padding: "40px 20px" },
-  emptyText: { fontSize: "16px", fontWeight: "600", color: "#94a3b8" },
-  // Sort bar
-  sortBar: { display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "8px" },
-  sortBtn: { padding: "6px 12px", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
-  orderSortWrap: { marginBottom: "14px", display: "flex", flexDirection: "column", gap: "6px" },
+  emptyText: { fontSize: "15px", fontWeight: "600", color: "#94a3b8" },
+
+  // Filter panel
+  filterPanel: { backgroundColor: "#f8fafc", borderRadius: "12px", padding: "12px", marginBottom: "14px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "10px" },
+  filterGroup: { display: "flex", flexDirection: "column", gap: "6px" },
+  filterLabel: { fontSize: "11px", fontWeight: "700", color: "#374151", textTransform: "uppercase", letterSpacing: "0.5px" },
+  pillRow: { display: "flex", gap: "5px", flexWrap: "wrap" },
+  pill: { padding: "5px 11px", border: "none", borderRadius: "20px", cursor: "pointer", fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap" },
+  searchBar: { width: "100%", padding: "10px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" },
+  resultCount: { fontSize: "12px", color: "#94a3b8", margin: 0, fontWeight: "600" },
+
   // Cards
-  card: { display: "flex", gap: "12px", backgroundColor: "#f8fafc", borderRadius: "14px", padding: "14px", marginBottom: "10px", border: "1px solid #e2e8f0" },
-  cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "6px", gap: "8px" },
-  cardEmail: { fontWeight: "700", color: "#1e293b", fontSize: "14px", margin: 0, wordBreak: "break-all" },
+  card: { display: "flex", gap: "10px", backgroundColor: "#f8fafc", borderRadius: "12px", padding: "12px", marginBottom: "8px", border: "1px solid #e2e8f0" },
+  cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "5px", gap: "8px" },
+  cardEmail: { fontWeight: "700", color: "#1e293b", fontSize: "13px", margin: 0, wordBreak: "break-all" },
   cardDetail: { fontSize: "12px", color: "#64748b", margin: "3px 0" },
-  cardNote: { fontSize: "12px", color: "#1e293b", backgroundColor: "white", padding: "6px 10px", borderRadius: "8px", margin: "6px 0", border: "1px solid #e2e8f0" },
+  cardNote: { fontSize: "12px", color: "#1e293b", backgroundColor: "white", padding: "6px 10px", borderRadius: "8px", margin: "5px 0", border: "1px solid #e2e8f0" },
   statusBadge: { padding: "3px 10px", borderRadius: "50px", fontSize: "11px", fontWeight: "700", textTransform: "capitalize", whiteSpace: "nowrap", flexShrink: 0 },
-  prescImg: { width: "80px", height: "80px", objectFit: "cover", borderRadius: "10px", border: "2px solid #e2e8f0", display: "block" },
-  btnRow: { display: "flex", gap: "6px", marginTop: "8px", flexWrap: "wrap" },
-  approveBtn: { padding: "6px 12px", backgroundColor: "#dcfce7", color: "#16a34a", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
-  rejectBtn: { padding: "6px 12px", backgroundColor: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
-  processBtn: { padding: "6px 12px", backgroundColor: "#eff6ff", color: "#2563eb", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
-  printBtn: { padding: "6px 12px", backgroundColor: "#f1f5f9", color: "#1e293b", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
-  downloadBtn: { padding: "6px 12px", backgroundColor: "#eff6ff", color: "#2563eb", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
-  whatsappBtn: { padding: "6px 12px", backgroundColor: "#dcfce7", color: "#16a34a", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
-  morePrescBtn: { padding: "6px 12px", backgroundColor: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
-  prescBlock: { backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "10px", marginBottom: "10px" },
+  prescImg: { width: "72px", height: "72px", objectFit: "cover", borderRadius: "10px", border: "2px solid #e2e8f0", display: "block" },
+  btnRow: { display: "flex", gap: "5px", marginTop: "8px", flexWrap: "wrap" },
+  approveBtn: { padding: "7px 12px", backgroundColor: "#dcfce7", color: "#16a34a", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  rejectBtn: { padding: "7px 12px", backgroundColor: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  processBtn: { padding: "7px 12px", backgroundColor: "#eff6ff", color: "#2563eb", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  printBtn: { padding: "7px 12px", backgroundColor: "#f1f5f9", color: "#1e293b", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  downloadBtn: { padding: "7px 12px", backgroundColor: "#eff6ff", color: "#2563eb", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  whatsappBtn: { padding: "7px 12px", backgroundColor: "#dcfce7", color: "#16a34a", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  morePrescBtn: { padding: "7px 12px", backgroundColor: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  prescBlock: { backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", padding: "10px", marginBottom: "8px" },
   userPrescBlock: { backgroundColor: "#fffbeb", border: "1px solid #fde68a", borderRadius: "10px", padding: "10px", marginTop: "8px" },
   prescBlockLabel: { fontSize: "11px", fontWeight: "700", color: "#374151", margin: "0 0 8px 0" },
   prescRow: { display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "flex-start" },
@@ -574,36 +697,41 @@ const styles = {
   prescActions: { display: "flex", gap: "4px", marginTop: "4px" },
   prescApprove: { padding: "3px 6px", backgroundColor: "#dcfce7", color: "#16a34a", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "12px" },
   prescReject: { padding: "3px 6px", backgroundColor: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "12px" },
-  itemsList: { backgroundColor: "white", borderRadius: "10px", padding: "8px 10px", margin: "6px 0", border: "1px solid #f1f5f9" },
+  itemsList: { backgroundColor: "white", borderRadius: "10px", padding: "8px 10px", margin: "5px 0", border: "1px solid #f1f5f9" },
   orderItem: { fontSize: "12px", color: "#1e293b", margin: "3px 0", fontWeight: "500" },
   orderFooter: { marginTop: "8px" },
-  orderTotal: { fontSize: "16px", color: "#1e40af" },
-  userAvatar: { width: "44px", height: "44px", borderRadius: "50%", backgroundColor: "#1e40af", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", fontWeight: "800", flexShrink: 0 },
+  orderTotal: { fontSize: "15px", color: "#1e40af" },
+  userAvatar: { width: "40px", height: "40px", borderRadius: "50%", backgroundColor: "#1e40af", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "800", flexShrink: 0 },
+  userStats: { display: "flex", gap: "6px", marginTop: "5px", flexWrap: "wrap" },
+  userStatPill: { fontSize: "11px", fontWeight: "600", backgroundColor: "#eff6ff", color: "#2563eb", padding: "3px 8px", borderRadius: "20px" },
+
   // Inventory
   invTopBar: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px", flexWrap: "wrap", gap: "10px" },
-  invSearchInput: { padding: "9px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", outline: "none", width: "180px", fontFamily: "Inter, sans-serif" },
-  invGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "10px" },
-  invCard: { backgroundColor: "#f8fafc", borderRadius: "12px", padding: "12px" },
-  invCardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px" },
-  invName: { fontSize: "13px", fontWeight: "700", color: "#1e293b", margin: 0, wordBreak: "break-word" },
+  invSearchInput: { padding: "9px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", outline: "none", width: "100%", fontFamily: "Inter, sans-serif", boxSizing: "border-box" },
+  invGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "8px" },
+  invCard: { backgroundColor: "#f8fafc", borderRadius: "12px", padding: "11px" },
+  invCardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" },
+  invName: { fontSize: "12px", fontWeight: "700", color: "#1e293b", margin: 0, wordBreak: "break-word" },
   invGeneric: { fontSize: "10px", color: "#94a3b8", margin: "2px 0 0 0" },
   lowBadge: { backgroundColor: "#fff7ed", color: "#ea580c", fontSize: "10px", fontWeight: "700", padding: "2px 7px", borderRadius: "50px", whiteSpace: "nowrap", flexShrink: 0 },
-  invStatsRow: { display: "flex", gap: "6px", alignItems: "center" },
-  invStat: { flex: 1, backgroundColor: "#eff6ff", borderRadius: "8px", padding: "6px 8px", textAlign: "center" },
-  invStatNum: { fontSize: "15px", fontWeight: "800", color: "#1e40af", margin: 0 },
+  invStatsRow: { display: "flex", gap: "5px", alignItems: "center" },
+  invStat: { flex: 1, backgroundColor: "#eff6ff", borderRadius: "8px", padding: "5px 7px", textAlign: "center" },
+  invStatNum: { fontSize: "14px", fontWeight: "800", color: "#1e40af", margin: 0 },
   invStatLabel: { fontSize: "10px", color: "#94a3b8", margin: "1px 0 0 0", fontWeight: "600" },
   invActions: { display: "flex", gap: "4px" },
-  invEditBtn: { padding: "6px 10px", backgroundColor: "#eff6ff", color: "#2563eb", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
-  invDeleteBtn: { padding: "6px 8px", backgroundColor: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px" },
-  invEditRow: { display: "flex", gap: "6px", alignItems: "flex-end" },
+  invEditBtn: { padding: "6px 8px", backgroundColor: "#eff6ff", color: "#2563eb", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
+  invDeleteBtn: { padding: "6px 7px", backgroundColor: "#fee2e2", color: "#dc2626", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px" },
+  invEditRow: { display: "flex", gap: "5px", alignItems: "flex-end" },
   invEditLabel: { display: "block", fontSize: "10px", fontWeight: "600", color: "#374151", marginBottom: "3px" },
   invEditInput: { width: "100%", padding: "7px 8px", borderRadius: "8px", border: "2px solid #2563eb", fontSize: "13px", outline: "none", boxSizing: "border-box", fontWeight: "600" },
   invSaveBtn: { padding: "7px 10px", backgroundColor: "#1e40af", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
   invCancelBtn: { padding: "7px 8px", backgroundColor: "#f1f5f9", color: "#64748b", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px" },
+
+  // Denied
   deniedPage: { minHeight: "100vh", backgroundColor: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" },
-  deniedBox: { backgroundColor: "white", borderRadius: "24px", padding: "40px 28px", textAlign: "center", maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.1)" },
+  deniedBox: { backgroundColor: "white", borderRadius: "24px", padding: "40px 24px", textAlign: "center", maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.1)" },
   deniedIcon: { fontSize: "56px", marginBottom: "12px" },
-  deniedTitle: { fontSize: "24px", fontWeight: "800", color: "#dc2626", marginBottom: "10px" },
+  deniedTitle: { fontSize: "22px", fontWeight: "800", color: "#dc2626", marginBottom: "10px" },
   deniedText: { color: "#64748b", fontSize: "14px", marginBottom: "24px" },
   deniedBtn: { padding: "12px 28px", backgroundColor: "#f1f5f9", color: "#1e293b", border: "none", borderRadius: "12px", fontSize: "15px", fontWeight: "700", cursor: "pointer" },
 };
