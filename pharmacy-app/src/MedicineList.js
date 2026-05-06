@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Papa from "papaparse";
+import { db } from "./firebase";
+import { collection, getDocs } from "firebase/firestore";
 import { useCart } from "./CartContext";
 import { getMedicineEmoji, getUnitLabel, getUnitShort } from "./medicineUtils";
 
@@ -43,8 +45,10 @@ function MedicineCard({ med, addToCart, cartItem }) {
     setEditing(false);
   }
 
+  const outOfStock = med.stock !== undefined && med.stock !== null && med.stock <= 0;
+
   return (
-    <div style={styles.card}>
+    <div style={{ ...styles.card, opacity: outOfStock ? 0.6 : 1 }}>
       <div style={styles.cardTop}>
         <span style={styles.categoryBadge}>{med.category_name}</span>
         <span style={styles.emoji}>{getMedicineEmoji(med.category_name)}</span>
@@ -57,6 +61,11 @@ function MedicineCard({ med, addToCart, cartItem }) {
         {med.strength && <span style={styles.detail}>💪 {med.strength}</span>}
         <span style={styles.detail}>🏭 {med.manufacturer_name}</span>
         <span style={styles.detail}>📦 {getUnitLabel(med)}</span>
+        {med.stock !== undefined && med.stock !== null && (
+          <span style={{ ...styles.detail, color: med.stock <= 10 ? "#ea580c" : "#16a34a", fontWeight: "600" }}>
+            {med.stock <= 0 ? "❌ Out of Stock" : med.stock <= 10 ? `⚠️ Only ${med.stock} left` : `✅ In Stock (${med.stock})`}
+          </span>
+        )}
       </div>
 
       <div style={styles.cardBottom}>
@@ -66,8 +75,12 @@ function MedicineCard({ med, addToCart, cartItem }) {
         </div>
 
         {!added ? (
-          <button style={styles.addBtn} onClick={handleAdd}>
-            + Add
+          <button
+            style={{ ...styles.addBtn, opacity: outOfStock ? 0.5 : 1, cursor: outOfStock ? "not-allowed" : "pointer" }}
+            onClick={outOfStock ? undefined : handleAdd}
+            disabled={outOfStock}
+          >
+            {outOfStock ? "Out of Stock" : "+ Add"}
           </button>
         ) : (
           <div style={styles.qtyControls}>
@@ -104,11 +117,33 @@ function MedicineCard({ med, addToCart, cartItem }) {
 
 function MedicineList() {
   const [medicines, setMedicines] = useState([]);
+  const [inventory, setInventory] = useState({});   // slug → { price, stock }
   const [randomSample, setRandomSample] = useState([]);
   const [search, setSearch] = useState("");
   const [committed, setCommitted] = useState(false);
+  const [invLoading, setInvLoading] = useState(true);
   const { addToCart, cart } = useCart();
 
+  // Fetch inventory overrides from Firestore once
+  useEffect(() => {
+    async function fetchInventory() {
+      try {
+        const snap = await getDocs(collection(db, "inventory"));
+        const map = {};
+        snap.docs.forEach((d) => {
+          const data = d.data();
+          map[d.id] = { price: data.price, stock: data.stock ?? null };
+        });
+        setInventory(map);
+      } catch (err) {
+        console.error("Failed to load inventory:", err);
+      }
+      setInvLoading(false);
+    }
+    fetchInventory();
+  }, []);
+
+  // Load CSV
   useEffect(() => {
     Papa.parse("/medicines.csv", {
       download: true,
@@ -116,21 +151,39 @@ function MedicineList() {
       complete: (result) => {
         const data = result.data.filter((m) => m.medicine_name);
         setMedicines(data);
-        const shuffled = [...data].sort(() => Math.random() - 0.5);
-        setRandomSample(shuffled.slice(0, 12));
       },
     });
   }, []);
 
+  // Merge CSV medicines with inventory overrides
+  const mergedMedicines = useMemo(() => {
+    return medicines.map((med) => {
+      const inv = inventory[med.slug];
+      if (!inv) return med;
+      return {
+        ...med,
+        price: inv.price ?? med.price,
+        stock: inv.stock,
+      };
+    });
+  }, [medicines, inventory]);
+
+  // Pick 12 random once medicines and inventory are both ready
+  useEffect(() => {
+    if (mergedMedicines.length === 0 || invLoading) return;
+    const shuffled = [...mergedMedicines].sort(() => Math.random() - 0.5);
+    setRandomSample(shuffled.slice(0, 12));
+  }, [mergedMedicines, invLoading]);
+
   const allMatches = useMemo(() => {
     if (!search) return [];
     const q = search.toLowerCase();
-    return medicines.filter((med) =>
+    return mergedMedicines.filter((med) =>
       med.medicine_name?.toLowerCase().includes(q) ||
       med.generic_name?.toLowerCase().includes(q) ||
       med.category_name?.toLowerCase().includes(q)
     );
-  }, [search, medicines]);
+  }, [search, mergedMedicines]);
 
   useEffect(() => {
     setCommitted(false);
@@ -188,7 +241,11 @@ function MedicineList() {
         )}
       </div>
 
-      {displayed.length === 0 && search ? (
+      {invLoading ? (
+        <div style={styles.loadingWrap}>
+          <p style={styles.loadingText}>⏳ Loading medicines...</p>
+        </div>
+      ) : displayed.length === 0 && search ? (
         <div style={styles.noResult}>
           <p style={styles.noResultText}>😕 No medicines found for "{search}"</p>
           <p style={styles.noResultSub}>Try a different name or category</p>
@@ -272,6 +329,14 @@ const styles = {
     maxWidth: "1200px",
     margin: "0 auto",
   },
+  loadingWrap: {
+    textAlign: "center",
+    padding: "60px 20px",
+  },
+  loadingText: {
+    fontSize: "18px",
+    color: "#94a3b8",
+  },
   card: {
     backgroundColor: "white",
     borderRadius: "16px",
@@ -281,6 +346,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: "8px",
+    transition: "opacity 0.2s",
   },
   cardTop: {
     display: "flex",

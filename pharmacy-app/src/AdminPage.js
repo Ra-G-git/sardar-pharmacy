@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { auth, db } from "./firebase";
-import { collection, getDocs, updateDoc, doc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, updateDoc, doc, deleteDoc, serverTimestamp, setDoc, getDoc } from "firebase/firestore";
 import { getMedicineEmoji } from "./medicineUtils";
 import { downloadReceipt, printReceipt, whatsappReceipt } from "./Receipt";
+import Papa from "papaparse";
 
 const ADMIN_EMAIL = "razeesardar@gmail.com";
 const LOW_STOCK_THRESHOLD = 10;
@@ -41,6 +42,17 @@ function AdminPage() {
   const [savingInv, setSavingInv] = useState(false);
   const [invStockFilter, setInvStockFilter] = useState("all");
 
+  // ── Edit Medicine tab ──────────────────────────────────────────
+  const [allCsvMedicines, setAllCsvMedicines] = useState([]);
+  const [editMedSearch, setEditMedSearch] = useState("");
+  const [editMedResults, setEditMedResults] = useState([]);
+  const [selectedMed, setSelectedMed] = useState(null);  // medicine being edited
+  const [editMedData, setEditMedData] = useState({
+    price: "", stock: "", unit: "", barcode: "",
+  });
+  const [savingMed, setSavingMed] = useState(false);
+  const [savedMed, setSavedMed] = useState(false);
+
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((u) => {
       setUser(u);
@@ -48,6 +60,17 @@ function AdminPage() {
       else setLoading(false);
     });
     return () => unsubscribe();
+  }, []);
+
+  // Load CSV for medicine edit search
+  useEffect(() => {
+    Papa.parse("/medicines.csv", {
+      download: true,
+      header: true,
+      complete: (result) => {
+        setAllCsvMedicines(result.data.filter((m) => m.medicine_name));
+      },
+    });
   }, []);
 
   async function fetchData() {
@@ -101,6 +124,83 @@ function AdminPage() {
     setInventory((prev) => prev.filter((item) => item.id !== id));
   }
 
+  // ── Edit Medicine search ───────────────────────────────────────
+  useEffect(() => {
+    if (editMedSearch.trim().length < 2) { setEditMedResults([]); return; }
+    const q = editMedSearch.toLowerCase();
+    const results = allCsvMedicines.filter((m) =>
+      m.medicine_name?.toLowerCase().includes(q) ||
+      m.generic_name?.toLowerCase().includes(q) ||
+      m.category_name?.toLowerCase().includes(q)
+    ).slice(0, 20);
+    setEditMedResults(results);
+  }, [editMedSearch, allCsvMedicines]);
+
+  async function selectMedicineToEdit(med) {
+    setSelectedMed(med);
+    setEditMedResults([]);
+    setEditMedSearch("");
+    setSavedMed(false);
+    // Load existing inventory data if present
+    try {
+      const invSnap = await getDoc(doc(db, "inventory", med.slug));
+      if (invSnap.exists()) {
+        const d = invSnap.data();
+        setEditMedData({
+          price: d.price ?? med.price ?? "",
+          stock: d.stock ?? "",
+          unit: d.unit ?? med.unit ?? "",
+          barcode: d.barcode ?? "",
+        });
+      } else {
+        setEditMedData({
+          price: med.price ?? "",
+          stock: "",
+          unit: med.unit ?? "",
+          barcode: "",
+        });
+      }
+    } catch (err) {
+      setEditMedData({ price: med.price ?? "", stock: "", unit: med.unit ?? "", barcode: "" });
+    }
+  }
+
+  async function saveMedicineEdit() {
+    if (!selectedMed) return;
+    setSavingMed(true);
+    try {
+      const invRef = doc(db, "inventory", selectedMed.slug);
+      const invSnap = await getDoc(invRef);
+      const payload = {
+        slug: selectedMed.slug,
+        medicine_name: selectedMed.medicine_name,
+        generic_name: selectedMed.generic_name,
+        category_name: selectedMed.category_name,
+        strength: selectedMed.strength || "",
+        manufacturer_name: selectedMed.manufacturer_name || "",
+        unit: editMedData.unit.trim() || selectedMed.unit || "",
+        unit_size: selectedMed.unit_size || "",
+        price: parseFloat(editMedData.price).toFixed(2),
+        stock: parseInt(editMedData.stock) || 0,
+        barcode: editMedData.barcode.trim(),
+        updatedAt: serverTimestamp(),
+      };
+      if (invSnap.exists()) {
+        await updateDoc(invRef, payload);
+      } else {
+        await setDoc(invRef, payload);
+      }
+      // Refresh local inventory list
+      setInventory((prev) => {
+        const exists = prev.find((i) => i.id === selectedMed.slug);
+        if (exists) return prev.map((i) => i.id === selectedMed.slug ? { ...i, ...payload, id: selectedMed.slug } : i);
+        return [...prev, { ...payload, id: selectedMed.slug }];
+      });
+      setSavedMed(true);
+    } catch (err) { console.error(err); }
+    setSavingMed(false);
+  }
+
   function getStatusColor(status) {
     switch (status) {
       case "approved": case "delivered": return { bg: "#f0fdf4", color: "#16a34a" };
@@ -118,12 +218,9 @@ function AdminPage() {
     });
   }
 
-  // ── Prescriptions ──────────────────────────────────────────────
   const sortedPrescriptions = (() => {
     let list = [...prescriptions];
-    // Status filter
     if (prescStatusFilter !== "all") list = list.filter(p => p.status === prescStatusFilter);
-    // Search
     if (prescSearch.trim()) {
       const q = prescSearch.toLowerCase();
       list = list.filter(p =>
@@ -131,12 +228,10 @@ function AdminPage() {
         p.note?.toLowerCase().includes(q)
       );
     }
-    // Sort
     list = sortByDate(list, "uploadedAt", prescSort);
     return list;
   })();
 
-  // ── Orders ──────────────────────────────────────────────────────
   const sortedOrders = (() => {
     let list = [...orders];
     if (orderStatusFilter !== "all") list = list.filter(o => o.status === orderStatusFilter);
@@ -154,7 +249,6 @@ function AdminPage() {
     return list;
   })();
 
-  // ── Users ────────────────────────────────────────────────────────
   const sortedUsers = (() => {
     let list = [...users];
     if (userSearch.trim()) {
@@ -197,10 +291,10 @@ function AdminPage() {
     { id: "prescriptions", label: "📋", fullLabel: "📋 Prescriptions", count: prescriptions.length, alert: pendingPrescriptions > 0 },
     { id: "orders", label: "🛒", fullLabel: "🛒 Orders", count: orders.length, alert: pendingOrders > 0 },
     { id: "inventory", label: "📦", fullLabel: "📦 Inventory", count: inventory.length, alert: lowStockItems.length > 0 },
+    { id: "editMedicine", label: "✏️", fullLabel: "✏️ Edit Medicine", count: null },
     { id: "users", label: "👤", fullLabel: "👤 Users", count: users.length },
   ];
 
-  // Reusable pill filter row
   const PillFilter = ({ label, value, onChange, options }) => (
     <div style={styles.filterGroup}>
       {label && <span style={styles.filterLabel}>{label}</span>}
@@ -282,9 +376,11 @@ function AdminPage() {
             }}>
               <span className="tab-full">{tab.fullLabel}</span>
               <span className="tab-short" style={{ display: "none" }}>{tab.label}</span>
-              <span style={{ ...styles.tabBadge, backgroundColor: activeTab === tab.id ? "rgba(255,255,255,0.3)" : "#e2e8f0", color: activeTab === tab.id ? "white" : "#64748b" }}>
-                {tab.count}
-              </span>
+              {tab.count !== null && (
+                <span style={{ ...styles.tabBadge, backgroundColor: activeTab === tab.id ? "rgba(255,255,255,0.3)" : "#e2e8f0", color: activeTab === tab.id ? "white" : "#64748b" }}>
+                  {tab.count}
+                </span>
+              )}
               {tab.alert && <span style={styles.alertDot} />}
             </button>
           ))}
@@ -534,6 +630,7 @@ function AdminPage() {
                                 <div style={{ minWidth: 0 }}>
                                   <p style={styles.invName}>{item.medicine_name}</p>
                                   <p style={styles.invGeneric}>{item.generic_name}{item.strength ? ` • ${item.strength}` : ""}</p>
+                                  {item.barcode && <p style={styles.invBarcode}>🔖 {item.barcode}</p>}
                                 </div>
                               </div>
                               {isLow && <span style={styles.lowBadge}>⚠️ Low</span>}
@@ -573,6 +670,130 @@ function AdminPage() {
                         );
                       })}
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Edit Medicine Tab ── */}
+              {activeTab === "editMedicine" && (
+                <div>
+                  <div style={styles.editMedHeader}>
+                    <h3 style={styles.editMedTitle}>✏️ Edit Any Medicine</h3>
+                    <p style={styles.editMedSub}>Search from all 20,000+ medicines, update price, stock, unit and barcode. Changes reflect instantly on the customer page and POS.</p>
+                  </div>
+
+                  {/* Search */}
+                  <div style={{ position: "relative", marginBottom: "20px" }}>
+                    <input
+                      type="text"
+                      placeholder="🔍 Search medicine by name, generic or category..."
+                      value={editMedSearch}
+                      onChange={(e) => { setEditMedSearch(e.target.value); setSelectedMed(null); setSavedMed(false); }}
+                      style={styles.editMedSearchInput}
+                      autoFocus
+                    />
+                    {editMedResults.length > 0 && (
+                      <div style={styles.editMedDropdown}>
+                        {editMedResults.map((med, i) => (
+                          <button key={i} style={styles.editMedDropdownItem} onClick={() => selectMedicineToEdit(med)}>
+                            <span style={{ fontSize: "20px", minWidth: "28px" }}>{getMedicineEmoji(med.category_name)}</span>
+                            <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
+                              <p style={{ margin: 0, fontWeight: "700", fontSize: "13px", color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{med.medicine_name}</p>
+                              <p style={{ margin: 0, fontSize: "11px", color: "#94a3b8" }}>{med.generic_name} • {med.strength} • {med.category_name}</p>
+                            </div>
+                            <span style={{ fontSize: "13px", fontWeight: "800", color: "#1e40af", flexShrink: 0 }}>৳{med.price}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Edit Form */}
+                  {selectedMed ? (
+                    <div style={styles.editMedForm}>
+                      {/* Medicine Info Header */}
+                      <div style={styles.editMedInfo}>
+                        <span style={{ fontSize: "32px" }}>{getMedicineEmoji(selectedMed.category_name)}</span>
+                        <div>
+                          <p style={styles.editMedName}>{selectedMed.medicine_name}</p>
+                          <p style={styles.editMedGeneric}>{selectedMed.generic_name} • {selectedMed.strength} • {selectedMed.category_name}</p>
+                          <p style={styles.editMedMfg}>🏭 {selectedMed.manufacturer_name}</p>
+                        </div>
+                      </div>
+
+                      {/* Fields */}
+                      <div style={styles.editMedFields}>
+                        <div style={styles.editMedField}>
+                          <label style={styles.editMedLabel}>💰 Price (৳)</label>
+                          <p style={styles.editMedHint}>Strip / pack price shown to customers</p>
+                          <input
+                            type="number" min="0" step="0.01"
+                            value={editMedData.price}
+                            onChange={(e) => setEditMedData((d) => ({ ...d, price: e.target.value }))}
+                            style={styles.editMedInput}
+                            placeholder="e.g. 12.50"
+                          />
+                        </div>
+
+                        <div style={styles.editMedField}>
+                          <label style={styles.editMedLabel}>📦 Stock Quantity</label>
+                          <p style={styles.editMedHint}>Number of units currently available</p>
+                          <input
+                            type="number" min="0"
+                            value={editMedData.stock}
+                            onChange={(e) => setEditMedData((d) => ({ ...d, stock: e.target.value }))}
+                            style={styles.editMedInput}
+                            placeholder="e.g. 100"
+                          />
+                        </div>
+
+                        <div style={styles.editMedField}>
+                          <label style={styles.editMedLabel}>🏷️ Unit Label</label>
+                          <p style={styles.editMedHint}>e.g. Tablet, Capsule, Syrup, Cream</p>
+                          <input
+                            type="text"
+                            value={editMedData.unit}
+                            onChange={(e) => setEditMedData((d) => ({ ...d, unit: e.target.value }))}
+                            style={styles.editMedInput}
+                            placeholder={selectedMed.unit || "e.g. Tablet"}
+                          />
+                        </div>
+
+                        <div style={styles.editMedField}>
+                          <label style={styles.editMedLabel}>🔖 Barcode</label>
+                          <p style={styles.editMedHint}>Scan barcode or enter manually for POS lookup</p>
+                          <input
+                            type="text"
+                            value={editMedData.barcode}
+                            onChange={(e) => setEditMedData((d) => ({ ...d, barcode: e.target.value }))}
+                            style={styles.editMedInput}
+                            placeholder="e.g. 8901234567890"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Save */}
+                      <div style={styles.editMedActions}>
+                        <button onClick={() => { setSelectedMed(null); setSavedMed(false); }} style={styles.editMedCancelBtn}>← Back to Search</button>
+                        <button onClick={saveMedicineEdit} disabled={savingMed} style={styles.editMedSaveBtn}>
+                          {savingMed ? "Saving..." : "💾 Save Changes"}
+                        </button>
+                      </div>
+
+                      {savedMed && (
+                        <div style={styles.savedBanner}>
+                          ✅ Saved! Price, stock, unit and barcode updated. Changes are now live on the customer page and POS.
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    !editMedSearch && (
+                      <div style={styles.editMedEmpty}>
+                        <p style={{ fontSize: "48px", margin: "0 0 12px" }}>🔍</p>
+                        <p style={{ fontSize: "15px", fontWeight: "600", color: "#64748b" }}>Search for a medicine above to edit it</p>
+                        <p style={{ fontSize: "13px", color: "#94a3b8" }}>You can update price, stock, unit label and barcode for any medicine</p>
+                      </div>
+                    )
                   )}
                 </div>
               )}
@@ -664,7 +885,6 @@ const styles = {
   empty: { textAlign: "center", padding: "40px 20px" },
   emptyText: { fontSize: "15px", fontWeight: "600", color: "#94a3b8" },
 
-  // Filter panel
   filterPanel: { backgroundColor: "#f8fafc", borderRadius: "12px", padding: "12px", marginBottom: "14px", border: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: "10px" },
   filterGroup: { display: "flex", flexDirection: "column", gap: "6px" },
   filterLabel: { fontSize: "11px", fontWeight: "700", color: "#374151", textTransform: "uppercase", letterSpacing: "0.5px" },
@@ -673,7 +893,6 @@ const styles = {
   searchBar: { width: "100%", padding: "10px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" },
   resultCount: { fontSize: "12px", color: "#94a3b8", margin: 0, fontWeight: "600" },
 
-  // Cards
   card: { display: "flex", gap: "10px", backgroundColor: "#f8fafc", borderRadius: "12px", padding: "12px", marginBottom: "8px", border: "1px solid #e2e8f0" },
   cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "5px", gap: "8px" },
   cardEmail: { fontWeight: "700", color: "#1e293b", fontSize: "13px", margin: 0, wordBreak: "break-all" },
@@ -706,13 +925,12 @@ const styles = {
   userStatPill: { fontSize: "11px", fontWeight: "600", backgroundColor: "#eff6ff", color: "#2563eb", padding: "3px 8px", borderRadius: "20px" },
 
   // Inventory
-  invTopBar: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px", flexWrap: "wrap", gap: "10px" },
-  invSearchInput: { padding: "9px 12px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", outline: "none", width: "100%", fontFamily: "Inter, sans-serif", boxSizing: "border-box" },
   invGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "8px" },
   invCard: { backgroundColor: "#f8fafc", borderRadius: "12px", padding: "11px" },
   invCardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" },
   invName: { fontSize: "12px", fontWeight: "700", color: "#1e293b", margin: 0, wordBreak: "break-word" },
   invGeneric: { fontSize: "10px", color: "#94a3b8", margin: "2px 0 0 0" },
+  invBarcode: { fontSize: "10px", color: "#6366f1", margin: "2px 0 0 0", fontFamily: "monospace" },
   lowBadge: { backgroundColor: "#fff7ed", color: "#ea580c", fontSize: "10px", fontWeight: "700", padding: "2px 7px", borderRadius: "50px", whiteSpace: "nowrap", flexShrink: 0 },
   invStatsRow: { display: "flex", gap: "5px", alignItems: "center" },
   invStat: { flex: 1, backgroundColor: "#eff6ff", borderRadius: "8px", padding: "5px 7px", textAlign: "center" },
@@ -726,6 +944,29 @@ const styles = {
   invEditInput: { width: "100%", padding: "7px 8px", borderRadius: "8px", border: "2px solid #2563eb", fontSize: "13px", outline: "none", boxSizing: "border-box", fontWeight: "600" },
   invSaveBtn: { padding: "7px 10px", backgroundColor: "#1e40af", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
   invCancelBtn: { padding: "7px 8px", backgroundColor: "#f1f5f9", color: "#64748b", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px" },
+
+  // Edit Medicine tab
+  editMedHeader: { marginBottom: "20px" },
+  editMedTitle: { fontSize: "18px", fontWeight: "800", color: "#1e293b", margin: "0 0 6px" },
+  editMedSub: { fontSize: "13px", color: "#64748b", margin: 0, lineHeight: "1.5" },
+  editMedSearchInput: { width: "100%", padding: "13px 16px", borderRadius: "12px", border: "2px solid #2563eb", fontSize: "15px", outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" },
+  editMedDropdown: { position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50, backgroundColor: "white", border: "1px solid #e2e8f0", borderRadius: "12px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", marginTop: "4px", overflow: "hidden", maxHeight: "300px", overflowY: "auto" },
+  editMedDropdownItem: { display: "flex", alignItems: "center", gap: "10px", width: "100%", padding: "11px 14px", border: "none", borderBottom: "1px solid #f1f5f9", backgroundColor: "white", cursor: "pointer", textAlign: "left" },
+  editMedForm: { backgroundColor: "#f8fafc", borderRadius: "14px", padding: "20px", border: "1px solid #e2e8f0" },
+  editMedInfo: { display: "flex", alignItems: "flex-start", gap: "14px", marginBottom: "20px", padding: "14px", backgroundColor: "white", borderRadius: "12px", border: "1px solid #e2e8f0" },
+  editMedName: { fontSize: "16px", fontWeight: "800", color: "#1e293b", margin: "0 0 3px" },
+  editMedGeneric: { fontSize: "12px", color: "#64748b", margin: "0 0 2px" },
+  editMedMfg: { fontSize: "11px", color: "#94a3b8", margin: 0 },
+  editMedFields: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "14px", marginBottom: "20px" },
+  editMedField: { display: "flex", flexDirection: "column" },
+  editMedLabel: { fontSize: "13px", fontWeight: "700", color: "#1e293b", marginBottom: "3px" },
+  editMedHint: { fontSize: "11px", color: "#94a3b8", margin: "0 0 7px" },
+  editMedInput: { padding: "11px 13px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", outline: "none", fontFamily: "Inter, sans-serif", fontWeight: "600", boxSizing: "border-box" },
+  editMedActions: { display: "flex", gap: "10px", flexWrap: "wrap" },
+  editMedCancelBtn: { padding: "11px 18px", backgroundColor: "#f1f5f9", color: "#64748b", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "600", cursor: "pointer" },
+  editMedSaveBtn: { flex: 1, padding: "11px 18px", background: "linear-gradient(135deg, #1e40af, #2563eb)", color: "white", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "700", cursor: "pointer", boxShadow: "0 4px 12px rgba(37,99,235,0.3)" },
+  savedBanner: { marginTop: "14px", padding: "12px 16px", backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "10px", color: "#16a34a", fontSize: "13px", fontWeight: "600" },
+  editMedEmpty: { textAlign: "center", padding: "50px 20px" },
 
   // Denied
   deniedPage: { minHeight: "100vh", backgroundColor: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" },

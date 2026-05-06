@@ -22,14 +22,12 @@ function POSPage() {
   const [salesHistory, setSalesHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [user, setUser] = useState(null);
-  const [discount, setDiscount] = useState(0);         // percentage value
-  const [discountType, setDiscountType] = useState("pct"); // "pct" | "flat"
-  const [flatDiscount, setFlatDiscount] = useState("");    // taka amount string
+  const [discount, setDiscount] = useState(0);
+  const [discountType, setDiscountType] = useState("pct");
+  const [flatDiscount, setFlatDiscount] = useState("");
   const [note, setNote] = useState("");
   const [historySearch, setHistorySearch] = useState("");
-  // Mobile: show cart drawer
   const [showCart, setShowCart] = useState(false);
-  // Infinite scroll for suggestions
   const [visibleCount, setVisibleCount] = useState(10);
 
   // Edit modal
@@ -37,6 +35,12 @@ function POSPage() {
   const [editPrice, setEditPrice] = useState("");
   const [editStock, setEditStock] = useState("");
   const [editUnit, setEditUnit] = useState("");
+  const [editBarcode, setEditBarcode] = useState("");
+
+  // Barcode search mode
+  const [barcodeMode, setBarcodeMode] = useState(false);
+  const [barcodeInput, setBarcodeInput] = useState("");
+  const [barcodeError, setBarcodeError] = useState("");
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((u) => setUser(u));
@@ -74,6 +78,45 @@ function POSPage() {
       setSalesHistory(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (err) { console.error(err); }
     setHistoryLoading(false);
+  }
+
+  // Barcode lookup — searches inventory for a matching barcode, then maps back to CSV medicine
+  async function handleBarcodeSearch() {
+    const code = barcodeInput.trim();
+    if (!code) return;
+    setBarcodeError("");
+    try {
+      const invSnap = await getDocs(collection(db, "inventory"));
+      const match = invSnap.docs.find((d) => d.data().barcode === code);
+      if (!match) {
+        setBarcodeError(`No medicine found with barcode "${code}"`);
+        return;
+      }
+      const invData = match.data();
+      // Find in CSV medicines by slug
+      const csvMed = medicines.find((m) => m.slug === match.id);
+      if (csvMed) {
+        await addToCart({ ...csvMed, price: invData.price ?? csvMed.price });
+      } else {
+        // Fallback: add directly from inventory data
+        await addToCart({
+          slug: match.id,
+          medicine_name: invData.medicine_name,
+          generic_name: invData.generic_name,
+          category_name: invData.category_name,
+          strength: invData.strength || "",
+          manufacturer_name: invData.manufacturer_name || "",
+          unit: invData.unit || "",
+          unit_size: invData.unit_size || "",
+          price: invData.price || "0",
+        });
+      }
+      setBarcodeInput("");
+      setBarcodeMode(false);
+    } catch (err) {
+      console.error(err);
+      setBarcodeError("Error looking up barcode");
+    }
   }
 
   async function addToCart(med) {
@@ -137,6 +180,11 @@ function POSPage() {
     setEditPrice(item.stripPrice || item.price);
     setEditStock("");
     setEditUnit(item.originalUnit || item.unit || "");
+    setEditBarcode("");
+    // Load existing barcode if any
+    getDoc(doc(db, "inventory", item.slug)).then((snap) => {
+      if (snap.exists()) setEditBarcode(snap.data().barcode || "");
+    }).catch(() => {});
   }
 
   async function saveEdit() {
@@ -150,7 +198,12 @@ function POSPage() {
       const invSnap = await getDoc(invRef);
       const stockVal = editStock !== "" ? parseInt(editStock) : null;
       if (invSnap.exists()) {
-        const updateData = { price: newPrice.toFixed(2), unit: newUnit, updatedAt: serverTimestamp() };
+        const updateData = {
+          price: newPrice.toFixed(2),
+          unit: newUnit,
+          barcode: editBarcode.trim(),
+          updatedAt: serverTimestamp(),
+        };
         if (stockVal !== null) updateData.stock = stockVal;
         await updateDoc(invRef, updateData);
       } else {
@@ -165,6 +218,7 @@ function POSPage() {
           unit_size: editingItem.unit_size || "",
           price: newPrice.toFixed(2),
           stock: stockVal !== null ? stockVal : 0,
+          barcode: editBarcode.trim(),
           updatedAt: serverTimestamp(),
         });
       }
@@ -181,6 +235,7 @@ function POSPage() {
     setEditPrice("");
     setEditStock("");
     setEditUnit("");
+    setEditBarcode("");
   }
 
   const subtotal = cart.reduce((sum, item) => sum + parseFloat(item.price) * item.quantity, 0);
@@ -218,7 +273,8 @@ function POSPage() {
       });
       setLastOrder({
         id: ref.id, name: customerName || "Walk-in Customer", phone: customerPhone || "N/A",
-        address: "In-store purchase", paymentMethod, discount, discountType, flatDiscount: discountType === "flat" ? (parseFloat(flatDiscount) || 0) : 0, note,
+        address: "In-store purchase", paymentMethod, discount, discountType,
+        flatDiscount: discountType === "flat" ? (parseFloat(flatDiscount) || 0) : 0, note,
         subtotal: subtotal.toFixed(2), items: orderItems,
         total: total.toFixed(2), status: "delivered", createdAt: new Date().toLocaleString(),
       });
@@ -311,50 +367,82 @@ function POSPage() {
             </div>
           ) : (
             <>
-              {/* ── Desktop: side-by-side | Mobile: stacked ── */}
               <div style={styles.saleLayout} className="pos-sale-layout">
                 {/* Left Panel */}
                 <div style={styles.leftPanel} className="pos-left-panel">
                   {/* Search */}
                   <div style={styles.section}>
-                    <h3 style={styles.sectionTitle}>🔍 Search Medicine</h3>
-                    <input
-                      type="text"
-                      placeholder="Medicine name, generic or category..."
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      style={styles.searchInput}
-                      autoFocus
-                    />
-                    {filtered.length > 0 && (
-                      <div
-                        style={styles.suggestions}
-                        onScroll={(e) => {
-                          const el = e.currentTarget;
-                          if (el.scrollHeight - el.scrollTop - el.clientHeight < 60) {
-                            setVisibleCount((c) => Math.min(c + 10, filtered.length));
-                          }
-                        }}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                      <h3 style={{ ...styles.sectionTitle, marginBottom: 0 }}>
+                        {barcodeMode ? "🔖 Barcode Scan" : "🔍 Search Medicine"}
+                      </h3>
+                      <button
+                        onClick={() => { setBarcodeMode((b) => !b); setBarcodeInput(""); setBarcodeError(""); setSearch(""); setFiltered([]); }}
+                        style={styles.barcodeToggleBtn}
+                        title={barcodeMode ? "Switch to name search" : "Switch to barcode scan"}
                       >
-                        {filtered.slice(0, visibleCount).map((med, i) => (
-                          <button key={i} style={styles.suggestion} onClick={() => addToCart(med)}>
-                            <span style={{ fontSize: "22px", minWidth: "30px" }}>{getMedicineEmoji(med.category_name)}</span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ fontSize: "14px", fontWeight: "700", color: "#1e293b", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{med.medicine_name}</p>
-                              <p style={{ fontSize: "12px", color: "#94a3b8", margin: "2px 0 0 0" }}>{med.generic_name} • {med.strength} • {getUnitLabel(med)}</p>
-                            </div>
-                            <div style={{ textAlign: "right", flexShrink: 0 }}>
-                              <p style={{ fontSize: "14px", fontWeight: "800", color: "#1e40af", margin: 0 }}>৳{med.price}</p>
-                              <p style={{ fontSize: "11px", color: "#94a3b8", margin: "2px 0 0 0" }}>{med.category_name}</p>
-                            </div>
-                          </button>
-                        ))}
-                        {visibleCount < filtered.length && (
-                          <div style={{ padding: "10px", textAlign: "center", fontSize: "12px", color: "#94a3b8" }}>
-                            ↓ Scroll for more ({filtered.length - visibleCount} remaining)
+                        {barcodeMode ? "🔍 Name Search" : "🔖 Barcode"}
+                      </button>
+                    </div>
+
+                    {barcodeMode ? (
+                      <div>
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          <input
+                            type="text"
+                            placeholder="Scan or type barcode..."
+                            value={barcodeInput}
+                            onChange={(e) => { setBarcodeInput(e.target.value); setBarcodeError(""); }}
+                            onKeyDown={(e) => e.key === "Enter" && handleBarcodeSearch()}
+                            style={{ ...styles.searchInput, flex: 1 }}
+                            autoFocus
+                          />
+                          <button onClick={handleBarcodeSearch} style={styles.barcodeLookupBtn}>Add →</button>
+                        </div>
+                        {barcodeError && <p style={styles.barcodeError}>{barcodeError}</p>}
+                        <p style={styles.barcodeHint}>Press Enter or click "Add" after scanning</p>
+                      </div>
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          placeholder="Medicine name, generic or category..."
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                          style={styles.searchInput}
+                          autoFocus
+                        />
+                        {filtered.length > 0 && (
+                          <div
+                            style={styles.suggestions}
+                            onScroll={(e) => {
+                              const el = e.currentTarget;
+                              if (el.scrollHeight - el.scrollTop - el.clientHeight < 60) {
+                                setVisibleCount((c) => Math.min(c + 10, filtered.length));
+                              }
+                            }}
+                          >
+                            {filtered.slice(0, visibleCount).map((med, i) => (
+                              <button key={i} style={styles.suggestion} onClick={() => addToCart(med)}>
+                                <span style={{ fontSize: "22px", minWidth: "30px" }}>{getMedicineEmoji(med.category_name)}</span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p style={{ fontSize: "14px", fontWeight: "700", color: "#1e293b", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{med.medicine_name}</p>
+                                  <p style={{ fontSize: "12px", color: "#94a3b8", margin: "2px 0 0 0" }}>{med.generic_name} • {med.strength} • {getUnitLabel(med)}</p>
+                                </div>
+                                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                                  <p style={{ fontSize: "14px", fontWeight: "800", color: "#1e40af", margin: 0 }}>৳{med.price}</p>
+                                  <p style={{ fontSize: "11px", color: "#94a3b8", margin: "2px 0 0 0" }}>{med.category_name}</p>
+                                </div>
+                              </button>
+                            ))}
+                            {visibleCount < filtered.length && (
+                              <div style={{ padding: "10px", textAlign: "center", fontSize: "12px", color: "#94a3b8" }}>
+                                ↓ Scroll for more ({filtered.length - visibleCount} remaining)
+                              </div>
+                            )}
                           </div>
                         )}
-                      </div>
+                      </>
                     )}
                   </div>
 
@@ -379,7 +467,7 @@ function POSPage() {
                   </div>
                 </div>
 
-                {/* Right Panel — Cart (desktop: sticky sidebar; mobile: inline below) */}
+                {/* Right Panel */}
                 <div style={styles.rightPanel} className="pos-right-panel">
                   <CartPanel
                     cart={cart}
@@ -404,14 +492,12 @@ function POSPage() {
                 </div>
               </div>
 
-              {/* Mobile floating cart button */}
               {cart.length > 0 && (
                 <button style={styles.floatingCartBtn} onClick={() => setShowCart(true)} className="mobile-only">
                   🛒 {cart.length} item{cart.length > 1 ? "s" : ""} — ৳{total.toFixed(2)}
                 </button>
               )}
 
-              {/* Mobile cart drawer */}
               {showCart && (
                 <div style={styles.cartDrawerOverlay} onClick={() => setShowCart(false)}>
                   <div style={styles.cartDrawer} onClick={(e) => e.stopPropagation()}>
@@ -534,6 +620,17 @@ function POSPage() {
                 <p style={styles.editHint}>e.g. Tablet, Capsule, Syrup</p>
                 <input type="text" placeholder={editingItem.unit || "e.g. Tablet"} value={editUnit} onChange={(e) => setEditUnit(e.target.value)} style={styles.editInput} />
               </div>
+              <div style={styles.editField}>
+                <label style={styles.editLabel}>🔖 Barcode</label>
+                <p style={styles.editHint}>Scan or type barcode for quick POS lookup</p>
+                <input
+                  type="text"
+                  placeholder="e.g. 8901234567890"
+                  value={editBarcode}
+                  onChange={(e) => setEditBarcode(e.target.value)}
+                  style={{ ...styles.editInput, fontFamily: "monospace" }}
+                />
+              </div>
             </div>
             <div style={styles.editModalFooter}>
               <button onClick={() => setEditingItem(null)} style={styles.editCancelBtn}>Cancel</button>
@@ -568,7 +665,6 @@ function POSPage() {
   );
 }
 
-// Extracted CartPanel component to avoid duplication
 function CartPanel({ cart, discount, setDiscount, discountType, setDiscountType, flatDiscount, setFlatDiscount, subtotal, discountAmt, total, loading, updateQty, removeFromCart, togglePiece, openEdit, setCart, handleCheckout, styles, inDrawer }) {
   return (
     <>
@@ -619,7 +715,6 @@ function CartPanel({ cart, discount, setDiscount, discountType, setDiscountType,
           </div>
 
           <div style={styles.discountRow}>
-            {/* Toggle: % vs ৳ */}
             <div style={styles.discountToggleRow}>
               <label style={styles.discountLabel}>Discount</label>
               <div style={styles.discountToggle}>
@@ -712,6 +807,13 @@ const styles = {
   searchInput: { width: "100%", padding: "13px 14px", borderRadius: "10px", border: "2px solid #2563eb", fontSize: "15px", outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" },
   suggestions: { marginTop: "6px", backgroundColor: "white", borderRadius: "10px", border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 6px 20px rgba(0,0,0,0.1)", maxHeight: "320px", overflowY: "auto" },
   suggestion: { display: "flex", alignItems: "center", gap: "10px", width: "100%", padding: "11px 14px", border: "none", borderBottom: "1px solid #f1f5f9", backgroundColor: "white", cursor: "pointer", textAlign: "left" },
+
+  // Barcode
+  barcodeToggleBtn: { padding: "7px 12px", backgroundColor: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: "8px", fontSize: "12px", fontWeight: "700", cursor: "pointer" },
+  barcodeLookupBtn: { padding: "13px 16px", backgroundColor: "#2563eb", color: "white", border: "none", borderRadius: "10px", fontSize: "14px", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" },
+  barcodeError: { color: "#dc2626", fontSize: "13px", margin: "8px 0 0", fontWeight: "600" },
+  barcodeHint: { color: "#94a3b8", fontSize: "12px", margin: "6px 0 0" },
+
   inputRow: { display: "flex", gap: "8px", marginBottom: "10px", flexWrap: "wrap" },
   input: { flex: "1 1 140px", padding: "11px 14px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" },
   textarea: { width: "100%", padding: "11px 14px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "14px", outline: "none", boxSizing: "border-box", resize: "none", height: "56px", marginBottom: "10px", fontFamily: "Inter, sans-serif" },
@@ -753,7 +855,6 @@ const styles = {
   checkoutBtn: { width: "100%", padding: "14px", background: "linear-gradient(135deg, #1e40af, #2563eb)", color: "white", border: "none", borderRadius: "11px", fontSize: "15px", fontWeight: "700", boxShadow: "0 4px 14px rgba(37,99,235,0.3)", fontFamily: "Inter, sans-serif", cursor: "pointer" },
 
   floatingCartBtn: { position: "fixed", bottom: "20px", left: "50%", transform: "translateX(-50%)", background: "linear-gradient(135deg, #1e40af, #2563eb)", color: "white", border: "none", borderRadius: "50px", padding: "14px 28px", fontSize: "15px", fontWeight: "700", boxShadow: "0 6px 24px rgba(37,99,235,0.5)", cursor: "pointer", zIndex: 200, whiteSpace: "nowrap" },
-
   cartDrawerOverlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 300, display: "flex", alignItems: "flex-end" },
   cartDrawer: { backgroundColor: "white", borderRadius: "20px 20px 0 0", width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", paddingTop: "12px" },
   cartDrawerHandle: { width: "40px", height: "4px", backgroundColor: "#e2e8f0", borderRadius: "2px", margin: "0 auto 12px" },
@@ -796,12 +897,11 @@ const styles = {
   editModalTitle: { color: "white", fontSize: "17px", fontWeight: "800", margin: 0 },
   editModalSub: { color: "rgba(255,255,255,0.6)", fontSize: "12px", margin: "3px 0 0 0" },
   editModalClose: { background: "rgba(255,255,255,0.1)", border: "none", color: "white", fontSize: "16px", cursor: "pointer", borderRadius: "50%", width: "30px", height: "30px", display: "flex", alignItems: "center", justifyContent: "center" },
-  editModalBody: { padding: "20px" },
-  editField: { marginBottom: "16px" },
+  editModalBody: { padding: "20px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" },
+  editField: { display: "flex", flexDirection: "column" },
   editLabel: { display: "block", fontSize: "13px", fontWeight: "700", color: "#1e293b", marginBottom: "3px" },
   editHint: { fontSize: "11px", color: "#94a3b8", margin: "0 0 7px 0" },
-  editInput: { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "16px", outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", fontWeight: "600" },
-  editInfo: { backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "9px", padding: "10px" },
+  editInput: { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "2px solid #e2e8f0", fontSize: "15px", outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif", fontWeight: "600" },
   editModalFooter: { display: "flex", gap: "8px", padding: "14px 20px", borderTop: "1px solid #e2e8f0" },
   editCancelBtn: { flex: 1, padding: "12px", backgroundColor: "#f1f5f9", color: "#64748b", border: "none", borderRadius: "9px", fontSize: "14px", fontWeight: "600", cursor: "pointer" },
   editSaveBtn: { flex: 2, padding: "12px", background: "linear-gradient(135deg, #1e40af, #2563eb)", color: "white", border: "none", borderRadius: "9px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
