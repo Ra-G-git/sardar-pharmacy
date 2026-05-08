@@ -3,6 +3,7 @@ import { db, auth } from "./firebase";
 import { collection, addDoc, serverTimestamp, getDocs, query, orderBy, where, doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { getMedicineEmoji, getUnitLabel } from "./medicineUtils";
 import { downloadReceipt, printReceipt, whatsappReceipt } from "./Receipt";
+import AddMedicineModal from "./AddMedicineModal";
 import Papa from "papaparse";
 
 const ADMIN_EMAIL = "razeesardar@gmail.com";
@@ -41,6 +42,9 @@ function POSPage() {
   const [barcodeMode, setBarcodeMode] = useState(false);
   const [barcodeInput, setBarcodeInput] = useState("");
   const [barcodeError, setBarcodeError] = useState("");
+
+  // Add new medicine modal
+  const [showAddMedicine, setShowAddMedicine] = useState(false);
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((u) => setUser(u));
@@ -412,6 +416,17 @@ function POSPage() {
                           style={styles.searchInput}
                           autoFocus
                         />
+                        {search.length >= 2 && filtered.length === 0 && (
+                          <div style={styles.noResultBox}>
+                            <p style={styles.noResultText}>😕 No results for "<strong>{search}</strong>"</p>
+                            <button
+                              style={styles.addNewMedBtn}
+                              onClick={() => setShowAddMedicine(true)}
+                            >
+                              ➕ Add "{search}" as New Medicine
+                            </button>
+                          </div>
+                        )}
                         {filtered.length > 0 && (
                           <div
                             style={styles.suggestions}
@@ -440,6 +455,14 @@ function POSPage() {
                                 ↓ Scroll for more ({filtered.length - visibleCount} remaining)
                               </div>
                             )}
+                            {/* Always show add option at bottom of results too */}
+                            <button
+                              style={{ ...styles.suggestion, borderTop: "1px solid #e2e8f0", backgroundColor: "#f0fdf4", justifyContent: "center", gap: "6px" }}
+                              onClick={() => setShowAddMedicine(true)}
+                            >
+                              <span>➕</span>
+                              <span style={{ fontSize: "13px", fontWeight: "700", color: "#16a34a" }}>Add a new medicine not in the list</span>
+                            </button>
                           </div>
                         )}
                       </>
@@ -638,6 +661,21 @@ function POSPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add New Medicine Modal */}
+      {showAddMedicine && (
+        <AddMedicineModal
+          onClose={() => setShowAddMedicine(false)}
+          initialData={{ medicine_name: search }}
+          onAdded={(med) => {
+            setShowAddMedicine(false);
+            setSearch("");
+            setFiltered([]);
+            // Immediately add to cart
+            addToCart(med);
+          }}
+        />
       )}
 
       <style>{`
@@ -891,6 +929,11 @@ const styles = {
   historyBtns: { display: "flex", gap: "6px", flexWrap: "wrap" },
 
   centered: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", textAlign: "center", padding: "20px" },
+
+  // No results / add new
+  noResultBox: { marginTop: "8px", backgroundColor: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "10px", padding: "14px 16px", display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start" },
+  noResultText: { fontSize: "13px", color: "#92400e", margin: 0 },
+  addNewMedBtn: { padding: "9px 16px", backgroundColor: "#1e40af", color: "white", border: "none", borderRadius: "9px", fontSize: "13px", fontWeight: "700", cursor: "pointer" },
   modalOverlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 9000, display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "0", backdropFilter: "blur(4px)" },
   editModal: { backgroundColor: "white", borderRadius: "20px 20px 0 0", width: "100%", maxWidth: "480px", boxShadow: "0 -8px 40px rgba(0,0,0,0.2)", overflow: "hidden" },
   editModalHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "18px 20px", background: "linear-gradient(135deg, #0f172a, #1e293b)" },

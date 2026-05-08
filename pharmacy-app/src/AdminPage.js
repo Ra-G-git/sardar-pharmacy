@@ -3,6 +3,7 @@ import { auth, db } from "./firebase";
 import { collection, getDocs, updateDoc, doc, deleteDoc, serverTimestamp, setDoc, getDoc } from "firebase/firestore";
 import { getMedicineEmoji } from "./medicineUtils";
 import { downloadReceipt, printReceipt, whatsappReceipt } from "./Receipt";
+import AddMedicineModal from "./AddMedicineModal";
 import Papa from "papaparse";
 
 const ADMIN_EMAIL = "razeesardar@gmail.com";
@@ -52,6 +53,7 @@ function AdminPage() {
   });
   const [savingMed, setSavingMed] = useState(false);
   const [savedMed, setSavedMed] = useState(false);
+  const [showAddMedicine, setShowAddMedicine] = useState(false);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((u) => {
@@ -678,8 +680,18 @@ function AdminPage() {
               {activeTab === "editMedicine" && (
                 <div>
                   <div style={styles.editMedHeader}>
-                    <h3 style={styles.editMedTitle}>✏️ Edit Any Medicine</h3>
-                    <p style={styles.editMedSub}>Search from all 20,000+ medicines, update price, stock, unit and barcode. Changes reflect instantly on the customer page and POS.</p>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "10px" }}>
+                      <div>
+                        <h3 style={styles.editMedTitle}>✏️ Edit Any Medicine</h3>
+                        <p style={styles.editMedSub}>Search from all 20,000+ medicines, update price, stock, unit and barcode. Changes reflect instantly on the customer page and POS.</p>
+                      </div>
+                      <button
+                        style={styles.addNewMedBtn}
+                        onClick={() => setShowAddMedicine(true)}
+                      >
+                        ➕ Add New Medicine
+                      </button>
+                    </div>
                   </div>
 
                   {/* Search */}
@@ -842,6 +854,22 @@ function AdminPage() {
         </div>
       </div>
 
+      {/* Add New Medicine Modal */}
+      {showAddMedicine && (
+        <AddMedicineModal
+          onClose={() => setShowAddMedicine(false)}
+          onAdded={(med) => {
+            setShowAddMedicine(false);
+            // Add to local inventory list so it appears in Inventory tab immediately
+            setInventory((prev) => {
+              const exists = prev.find((i) => i.id === med.id);
+              if (exists) return prev.map((i) => i.id === med.id ? { ...i, ...med } : i);
+              return [...prev, med];
+            });
+          }}
+        />
+      )}
+
       {/* Lightbox */}
       {selectedImage && (
         <div onClick={() => setSelectedImage(null)} style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.9)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 9999, cursor: "zoom-out", padding: "20px" }}>
@@ -947,6 +975,7 @@ const styles = {
 
   // Edit Medicine tab
   editMedHeader: { marginBottom: "20px" },
+  addNewMedBtn: { padding: "10px 18px", background: "linear-gradient(135deg, #16a34a, #15803d)", color: "white", border: "none", borderRadius: "10px", fontSize: "13px", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 4px 10px rgba(22,163,74,0.3)" },
   editMedTitle: { fontSize: "18px", fontWeight: "800", color: "#1e293b", margin: "0 0 6px" },
   editMedSub: { fontSize: "13px", color: "#64748b", margin: 0, lineHeight: "1.5" },
   editMedSearchInput: { width: "100%", padding: "13px 16px", borderRadius: "12px", border: "2px solid #2563eb", fontSize: "15px", outline: "none", boxSizing: "border-box", fontFamily: "Inter, sans-serif" },
