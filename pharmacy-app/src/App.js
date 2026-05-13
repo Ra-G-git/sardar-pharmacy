@@ -72,7 +72,7 @@ function App() {
                 backgroundColor: "rgba(255,255,255,0.1)",
                 padding: "6px 14px",
                 borderRadius: "50px",
-              }}>🕐 Open 8AM – 11PM</span>
+              }}>🕐 Open 10:00 AM – 11:50 PM</span>
             </div>
 
             <div style={{

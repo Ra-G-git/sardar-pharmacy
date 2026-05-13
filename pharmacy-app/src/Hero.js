@@ -13,7 +13,7 @@ function Hero() {
         <div style={styles.info}>
           <span style={styles.infoItem}>📍 10/1 Pallabi, Mirpur-11½, Dhaka-1216</span>
           <span style={styles.infoItem}>📞 01559084327</span>
-          <span style={styles.infoItem}>🕐 Open 8AM – 11PM</span>
+          <span style={styles.infoItem}>🕐 Open 10:00 AM – 11:50 PM</span>
         </div>
         <div style={styles.buttons}>
           <button

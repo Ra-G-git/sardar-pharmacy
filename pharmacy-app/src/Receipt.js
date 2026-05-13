@@ -28,7 +28,7 @@ export function generateReceipt(order) {
   // Pharmacy info
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text("10/1 Pallabi, Mirpur-11\u00bd, Dhaka-1216 | 01559084327 | Open 8AM-11PM", 105, 24, { align: "center" });
+  doc.text("10/1 Pallabi, Mirpur-11\u00bd, Dhaka-1216 | 01559084327 | Open 10:00 AM – 11:50 PM", 105, 24, { align: "center" });
 
   // Receipt title
   doc.setFontSize(11);
@@ -301,7 +301,7 @@ export function printReceipt(order) {
   <div class="header">
     <h1>Sardar Pharmacy</h1>
     <p>10/1 Pallabi, Mirpur-11&frac12;, Dhaka-1216</p>
-    <p>Tel: 01559084327 | Open 8AM-11PM</p>
+    <p>Tel: 01559084327 | Open 10:00 AM – 11:50 PM</p>
     <p>---- RECEIPT ----</p>
   </div>
 

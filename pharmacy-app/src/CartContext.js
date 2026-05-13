@@ -4,12 +4,13 @@ const CartContext = createContext();
 
 export function CartProvider({ children }) {
   const [cart, setCart] = useState([]);
+  // altPrefs: { [slug]: { allow: bool, preferredMed: obj|null } }
+  const [altPrefs, setAltPrefs] = useState({});
 
   function addToCart(medicine) {
     setCart((prev) => {
       const exists = prev.find((item) => item.slug === medicine.slug);
 
-      // Direct quantity set (from manual input)
       if (medicine.setQuantity) {
         if (medicine.quantity === 0) {
           return prev.filter((item) => item.slug !== medicine.slug);
@@ -24,7 +25,6 @@ export function CartProvider({ children }) {
         return [...prev, { ...medicine, quantity: medicine.quantity }];
       }
 
-      // Decrement mode: reduce by 1 or remove if qty hits 0
       if (medicine.decrement) {
         if (!exists) return prev;
         if (exists.quantity <= 1) {
@@ -37,7 +37,6 @@ export function CartProvider({ children }) {
         );
       }
 
-      // Normal add: increment if exists, otherwise add with qty 1
       if (exists) {
         return prev.map((item) =>
           item.slug === medicine.slug
@@ -55,10 +54,23 @@ export function CartProvider({ children }) {
 
   function clearCart() {
     setCart([]);
+    setAltPrefs({});
+  }
+
+  // Set whether a cart item allows alternatives + which preferred brand
+  function setAltPref(slug, allow, preferredMed = null) {
+    setAltPrefs((prev) => ({
+      ...prev,
+      [slug]: { allow, preferredMed: allow ? preferredMed : null },
+    }));
+  }
+
+  function getAltPref(slug) {
+    return altPrefs[slug] || { allow: false, preferredMed: null };
   }
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart }}>
+    <CartContext.Provider value={{ cart, addToCart, removeFromCart, clearCart, altPrefs, setAltPref, getAltPref }}>
       {children}
     </CartContext.Provider>
   );

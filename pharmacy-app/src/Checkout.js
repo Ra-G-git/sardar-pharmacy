@@ -1,11 +1,126 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { auth, db } from "./firebase";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, getDocs } from "firebase/firestore";
 import { useCart } from "./CartContext";
 import { downloadReceipt, printReceipt, whatsappReceipt } from "./Receipt";
+import Papa from "papaparse";
+import { getMedicineEmoji } from "./medicineUtils";
+
+// ─── Alt Brand Selector (per cart item) ──────────────────────────────────────
+
+function AltBrandSelector({ item, allMedicines, altPref, onAltPrefChange }) {
+  // Find alternatives: same generic + same unit (dosage form: bottle/strip/piece/tube) + same strength
+  // category_name is therapeutic class (Antacid, Antibiotic) NOT dosage form — don't use it
+  // unit is the actual form: "bottle"=syrup, "strip"/"piece"=tablet, "tube"=cream etc.
+  const alternatives = useMemo(() => {
+    if (!item.generic_name) return [];
+    const n = (s) => (s || "").toLowerCase().trim();
+    const generic   = n(item.generic_name);
+    const unit      = n(item.unit);      // "bottle", "strip", "piece", "tube", etc.
+    const strength  = n(item.strength);
+    return allMedicines.filter((m) => {
+      if (n(m.medicine_name) === n(item.medicine_name)) return false;
+      if (n(m.generic_name) !== generic) return false;
+      // unit is the dosage form — must match exactly (bottle≠piece≠strip)
+      if (unit && n(m.unit) !== unit) return false;
+      // strength must match if present
+      if (strength && n(m.strength) !== strength) return false;
+      return true;
+    });
+  }, [item, allMedicines]);
+
+  if (alternatives.length === 0) return null;
+
+  const isAllowed = altPref?.allow || false;
+  const preferredMed = altPref?.preferredMed || null;
+
+  function handleToggle() {
+    if (isAllowed) {
+      onAltPrefChange(item.slug, false, null);
+    } else {
+      onAltPrefChange(item.slug, true, null);
+    }
+  }
+
+  function handleDropdownChange(e) {
+    const slug = e.target.value;
+    if (!slug) {
+      onAltPrefChange(item.slug, true, null);
+      return;
+    }
+    const selected = alternatives.find((m) => m.slug === slug);
+    onAltPrefChange(item.slug, true, selected || null);
+  }
+
+  return (
+    <div style={altStyles.wrap}>
+      {/* Toggle row */}
+      <div style={altStyles.toggleRow}>
+        <div style={altStyles.toggleLeft}>
+          <button
+            onClick={handleToggle}
+            style={{
+              ...altStyles.toggleBtn,
+              background: isAllowed ? "#2563eb" : "#e2e8f0",
+            }}
+          >
+            <div
+              style={{
+                ...altStyles.toggleThumb,
+                transform: isAllowed ? "translateX(16px)" : "translateX(2px)",
+              }}
+            />
+          </button>
+          <span style={altStyles.toggleLabel}>
+            Allow alternative brand if unavailable
+          </span>
+        </div>
+        <span style={altStyles.altCount}>{alternatives.length} available</span>
+      </div>
+
+      {/* Dropdown — shown only when toggle is on */}
+      {isAllowed && (
+        <div style={altStyles.dropdownWrap}>
+          <label style={altStyles.dropdownLabel}>Preferred brand (optional)</label>
+          <select
+            value={preferredMed?.slug || ""}
+            onChange={handleDropdownChange}
+            style={altStyles.dropdown}
+          >
+            <option value="">— Any alternative is fine —</option>
+            {alternatives.map((m) => (
+              <option key={m.slug} value={m.slug}>
+                {getMedicineEmoji(m.category_name)} {m.medicine_name}
+                {m.manufacturer_name ? ` · ${m.manufacturer_name}` : ""}
+                {m.price ? ` · ৳${parseFloat(m.price).toFixed(2)}` : ""}
+              </option>
+            ))}
+          </select>
+
+          {/* Show selected preferred brand info */}
+          {preferredMed && (
+            <div style={altStyles.preferredInfo}>
+              <span style={altStyles.preferredIcon}>{getMedicineEmoji(preferredMed.category_name)}</span>
+              <div>
+                <div style={altStyles.preferredName}>{preferredMed.medicine_name}</div>
+                <div style={altStyles.preferredMeta}>
+                  {preferredMed.manufacturer_name}
+                  {preferredMed.price ? ` · ৳${parseFloat(preferredMed.price).toFixed(2)}` : ""}
+                  {preferredMed.strength ? ` · ${preferredMed.strength}` : ""}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Checkout ────────────────────────────────────────────────────────────
 
 function Checkout({ onClose }) {
-  const { cart, clearCart } = useCart();
+  const { cart, clearCart, altPrefs, setAltPref, getAltPref } = useCart();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -17,8 +132,20 @@ function Checkout({ onClose }) {
   const [lastOrderItems, setLastOrderItems] = useState([]);
   const [lastTotal, setLastTotal] = useState("");
 
+  // All medicines from CSV for alt brand lookup
+  const [allMedicines, setAllMedicines] = useState([]);
+  useEffect(() => {
+    Papa.parse("/medicines.csv", {
+      download: true,
+      header: true,
+      complete: (result) => {
+        setAllMedicines(result.data.filter((m) => m.medicine_name));
+      },
+    });
+  }, []);
+
   // Prescription states
-  const [prescriptions, setPrescriptions] = useState([]); // [{file, preview}]
+  const [prescriptions, setPrescriptions] = useState([]);
   const [uploadingPresc, setUploadingPresc] = useState(false);
 
   const total = cart.reduce(
@@ -33,7 +160,6 @@ function Checkout({ onClose }) {
       preview: URL.createObjectURL(file),
     }));
     setPrescriptions((prev) => [...prev, ...newPrescriptions]);
-    // reset input so same file can be added again if needed
     e.target.value = "";
   }
 
@@ -72,17 +198,29 @@ function Checkout({ onClose }) {
     setError("");
 
     try {
-      const orderItems = cart.map((item) => ({
-        name: item.medicine_name,
-        category: item.category_name,
-        price: item.price,
-        quantity: item.quantity,
-        unit: item.unit,
-        unit_size: item.unit_size,
-        strength: item.strength,
-      }));
+      const orderItems = cart.map((item) => {
+        const pref = getAltPref(item.slug);
+        return {
+          name: item.medicine_name,
+          category: item.category_name,
+          price: item.price,
+          quantity: item.quantity,
+          unit: item.unit,
+          unit_size: item.unit_size,
+          strength: item.strength,
+          // Alt brand preferences saved with each item
+          allowAlternative: pref.allow || false,
+          preferredAlternative: pref.preferredMed
+            ? {
+                name: pref.preferredMed.medicine_name,
+                slug: pref.preferredMed.slug,
+                price: pref.preferredMed.price,
+                manufacturer: pref.preferredMed.manufacturer_name,
+              }
+            : null,
+        };
+      });
 
-      // Place the order first
       const ref = await addDoc(collection(db, "orders"), {
         userId: auth.currentUser.uid,
         userEmail: auth.currentUser.email,
@@ -99,7 +237,6 @@ function Checkout({ onClose }) {
 
       const orderId = ref.id;
 
-      // Upload prescriptions if any
       if (prescriptions.length > 0) {
         setUploadingPresc(true);
         for (const presc of prescriptions) {
@@ -110,7 +247,7 @@ function Checkout({ onClose }) {
             imageUrl,
             note: "",
             status: "pending",
-            orderId,           // linked to this order
+            orderId,
             uploadedAt: serverTimestamp(),
           });
         }
@@ -174,9 +311,19 @@ function Checkout({ onClose }) {
           <div style={styles.orderSummary}>
             <h3 style={styles.sectionTitle}>📦 Order Summary</h3>
             {cart.map((item, index) => (
-              <div key={index} style={styles.summaryItem}>
-                <span style={styles.summaryName}>💊 {item.medicine_name} ×{item.quantity}</span>
-                <span style={styles.summaryPrice}>৳{(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+              <div key={index} style={styles.summaryItemWrap}>
+                {/* Item row */}
+                <div style={styles.summaryItem}>
+                  <span style={styles.summaryName}>{getMedicineEmoji(item.category_name)} {item.medicine_name} ×{item.quantity}</span>
+                  <span style={styles.summaryPrice}>৳{(parseFloat(item.price) * item.quantity).toFixed(2)}</span>
+                </div>
+                {/* Alt brand selector below each item */}
+                <AltBrandSelector
+                  item={item}
+                  allMedicines={allMedicines}
+                  altPref={getAltPref(item.slug)}
+                  onAltPrefChange={setAltPref}
+                />
               </div>
             ))}
             <div style={styles.summaryTotal}>
@@ -274,6 +421,109 @@ function Checkout({ onClose }) {
   );
 }
 
+// ─── Alt Brand Selector Styles ────────────────────────────────────────────────
+
+const altStyles = {
+  wrap: {
+    marginTop: "6px",
+    backgroundColor: "#f8fafc",
+    borderRadius: "10px",
+    padding: "10px 12px",
+    border: "1px solid #e2e8f0",
+  },
+  toggleRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "8px",
+  },
+  toggleLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  toggleBtn: {
+    width: "36px",
+    height: "20px",
+    borderRadius: "10px",
+    border: "none",
+    cursor: "pointer",
+    position: "relative",
+    flexShrink: 0,
+    transition: "background 0.2s",
+    padding: 0,
+  },
+  toggleThumb: {
+    position: "absolute",
+    top: "2px",
+    width: "16px",
+    height: "16px",
+    borderRadius: "50%",
+    backgroundColor: "white",
+    transition: "transform 0.2s",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+  },
+  toggleLabel: {
+    fontSize: "12px",
+    color: "#374151",
+    fontWeight: "500",
+  },
+  altCount: {
+    fontSize: "11px",
+    color: "#94a3b8",
+    flexShrink: 0,
+  },
+  dropdownWrap: {
+    marginTop: "10px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+  },
+  dropdownLabel: {
+    fontSize: "11px",
+    fontWeight: "600",
+    color: "#64748b",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  },
+  dropdown: {
+    width: "100%",
+    padding: "9px 12px",
+    borderRadius: "8px",
+    border: "1.5px solid #bfdbfe",
+    backgroundColor: "white",
+    fontSize: "13px",
+    color: "#1e293b",
+    outline: "none",
+    cursor: "pointer",
+  },
+  preferredInfo: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "8px",
+    backgroundColor: "#eff6ff",
+    borderRadius: "8px",
+    padding: "8px 10px",
+    border: "1px solid #bfdbfe",
+  },
+  preferredIcon: {
+    fontSize: "14px",
+    flexShrink: 0,
+  },
+  preferredName: {
+    fontWeight: "700",
+    fontSize: "13px",
+    color: "#1e40af",
+  },
+  preferredMeta: {
+    fontSize: "11px",
+    color: "#64748b",
+    marginTop: "2px",
+  },
+};
+
+// ─── Checkout Styles ──────────────────────────────────────────────────────────
+
 const styles = {
   overlay: {
     position: "fixed",
@@ -328,7 +578,15 @@ const styles = {
     border: "1px solid #e2e8f0",
   },
   sectionTitle: { fontSize: "15px", fontWeight: "700", color: "#1e293b", marginBottom: "14px" },
-  summaryItem: { display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#64748b", marginBottom: "8px" },
+  summaryItemWrap: {
+    marginBottom: "10px",
+  },
+  summaryItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    fontSize: "13px",
+    color: "#64748b",
+  },
   summaryName: { flex: 1 },
   summaryPrice: { fontWeight: "600", color: "#1e293b" },
   summaryTotal: {
@@ -363,7 +621,6 @@ const styles = {
     resize: "none",
     height: "90px",
   },
-  // Prescription section
   prescSection: {
     backgroundColor: "#f0fdf4",
     border: "1.5px dashed #86efac",
