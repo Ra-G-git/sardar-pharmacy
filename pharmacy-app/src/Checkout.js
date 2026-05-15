@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { auth, db } from "./firebase";
-import { collection, addDoc, serverTimestamp, getDocs } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { useCart } from "./CartContext";
 import { downloadReceipt, printReceipt, whatsappReceipt } from "./Receipt";
 import Papa from "papaparse";
@@ -120,7 +120,7 @@ function AltBrandSelector({ item, allMedicines, altPref, onAltPrefChange }) {
 // ─── Main Checkout ────────────────────────────────────────────────────────────
 
 function Checkout({ onClose }) {
-  const { cart, clearCart, altPrefs, setAltPref, getAltPref } = useCart();
+  const { cart, clearCart, setAltPref, getAltPref } = useCart();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
