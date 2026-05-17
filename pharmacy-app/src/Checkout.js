@@ -9,22 +9,19 @@ import { getMedicineEmoji } from "./medicineUtils";
 // ─── Alt Brand Selector (per cart item) ──────────────────────────────────────
 
 function AltBrandSelector({ item, allMedicines, altPref, onAltPrefChange }) {
-  // Find alternatives: same generic + same unit (dosage form: bottle/strip/piece/tube) + same strength
-  // category_name is therapeutic class (Antacid, Antibiotic) NOT dosage form — don't use it
-  // unit is the actual form: "bottle"=syrup, "strip"/"piece"=tablet, "tube"=cream etc.
+  // Find alternatives: same generic_name + same unit only.
+  // category_name is unreliable: "Syrup" vs "Oral Suspension" are the same form.
+  // strength is unreliable: formats differ wildly across brands in the CSV.
+  // unit ("200 ml bottle", "strip", "piece") is the most reliable dosage form indicator.
   const alternatives = useMemo(() => {
     if (!item.generic_name) return [];
     const n = (s) => (s || "").toLowerCase().trim();
-    const generic   = n(item.generic_name);
-    const unit      = n(item.unit);      // "bottle", "strip", "piece", "tube", etc.
-    const strength  = n(item.strength);
+    const generic = n(item.generic_name);
+    const unit    = n(item.unit);
     return allMedicines.filter((m) => {
       if (n(m.medicine_name) === n(item.medicine_name)) return false;
       if (n(m.generic_name) !== generic) return false;
-      // unit is the dosage form — must match exactly (bottle≠piece≠strip)
       if (unit && n(m.unit) !== unit) return false;
-      // strength must match if present
-      if (strength && n(m.strength) !== strength) return false;
       return true;
     });
   }, [item, allMedicines]);
