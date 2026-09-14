@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Pharmacy POS Login Panel">
+  <title>Sign In — PharmaPOS</title>
+  <link rel="icon" href="/pos/img/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 10% 20%, rgb(90, 92, 234) 0%, rgb(32, 45, 107) 100%);
+      font-family: 'Inter', sans-serif;
+    }
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+    .login-card {
+      border: none;
+      border-radius: var(--radius);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 40px 30px;
+      animation: fadeIn 0.5s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .logo-container {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    .logo-icon {
+      font-size: 55px;
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+    .logo-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text-dark);
+      margin: 0;
+    }
+    .logo-subtitle {
+      font-size: 13px;
+      color: #64748b;
+      margin-top: 6px;
+      margin-bottom: 0;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-label {
+      display: block;
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-dark);
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      height: 44px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0 14px;
+      font-size: 14px;
+      transition: all 0.2s;
+      background: #fff;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(90, 92, 234, 0.15);
+    }
+    .btn-login {
+      width: 100%;
+      height: 46px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+    }
+    .btn-login:hover {
+      background: #474adb;
+      box-shadow: 0 4px 12px rgba(90, 92, 234, 0.3);
+    }
+    .btn-login:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+    .alert-error {
+      background: #fef2f2;
+      color: var(--danger);
+      border: 1px solid #fee2e2;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .demo-accounts {
+      border-top: 1px solid var(--border-light);
+      margin-top: 25px;
+      padding-top: 18px;
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-container">
+    <div class="login-card">
+      <div class="logo-container">
+        <img src="/pos/img/logo.svg" alt="Sardar Pharmacy" style="height:56px; width:auto; object-fit:contain; margin-bottom:8px;">
+        <h2 class="logo-title">PharmaPOS</h2>
+        <p class="logo-subtitle">Pharmacy POS Login Panel</p>
+      </div>
+
+      <div id="error-message" class="alert-error"></div>
+      <div id="info-message" style="display:none; background:#f0fdf4; color:#15803d; border: 1px solid #dcfce7; padding: 12px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; margin-bottom: 20px;"></div>
+
+      <!-- ── Login Section ─────────────────────────── -->
+      <div id="login-section">
+
+        <!-- Checking Firebase auth state (brief, on every load) -->
+        <div id="gs-checking" style="text-align:center; padding:30px 0;">
+          <div style="width:36px; height:36px; border:3px solid #e2e8f0; border-top-color:var(--primary); border-radius:50%; margin:0 auto 14px; animation:spin 0.8s linear infinite;"></div>
+          <p style="color:#94a3b8; font-size:13px;">Checking your account…</p>
+        </div>
+        <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+
+        <!-- Signed in via Firebase, but this email isn't an authorized staff account -->
+        <div id="gs-denied" style="display:none; text-align:center; padding:10px 0;">
+          <p style="font-size:40px; margin:0 0 8px;">🚫</p>
+          <p style="font-weight:700; color:#1e293b; margin:0 0 4px;">Access Restricted</p>
+          <p style="font-size:13px; color:#64748b; margin:0 0 4px;">You're signed in as</p>
+          <p id="gs-denied-email" style="font-size:13px; font-weight:700; color:#1e293b; margin:0 0 14px; word-break:break-all;"></p>
+          <p style="font-size:12px; color:#94a3b8; margin:0 0 18px;">This account isn't set up for POS access. Ask an admin to add your Gmail in the Users tab, or sign in with a different Google account.</p>
+          <button type="button" id="btn-gs-signout" style="width:100%; padding:11px; border:2px solid #e2e8f0; border-radius:var(--radius-sm); background:white; font-size:13px; font-weight:700; color:#1e293b; cursor:pointer; font-family:'Inter',sans-serif;">Try a Different Google Account</button>
+        </div>
+
+        <!-- Not signed in via Firebase at all — main path in for staff -->
+        <div id="gs-prompt" style="display:none;">
+          <p style="font-size:13px; color:#64748b; text-align:center; margin:0 0 18px;">Sign in with the Google account your admin registered for you.</p>
+          <button type="button" id="btn-google-signin" style="width:100%; padding:12px; border:2px solid #e2e8f0; border-radius:var(--radius-sm); background:white; font-size:14px; font-weight:700; color:#1e293b; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px; font-family:'Inter',sans-serif;">
+            <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.68 9c0-.6.1-1.18.29-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.59-2.59C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+            Sign in with Google
+          </button>
+
+          <p style="text-align:center; margin-top:18px;">
+            <a href="javascript:void(0)" id="link-staff-login" style="color:#94a3b8; font-size:12px; text-decoration:underline;">Staff login with username instead</a>
+          </p>
+        </div>
+
+        <!-- Username/password — fallback, hidden unless explicitly opened -->
+        <div id="staff-login-form" style="display:none;">
+          <form id="login-form">
+            <div class="form-group">
+              <label class="form-label" for="username">Username</label>
+              <input type="text" class="form-input" id="username" placeholder="Enter username" required autocomplete="username">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="password">Password</label>
+              <input type="password" class="form-input" id="password" placeholder="Enter password" required autocomplete="current-password">
+            </div>
+            <div style="text-align: right; margin-top: -10px; margin-bottom: 18px;">
+              <a href="javascript:void(0)" id="link-forgot" style="color: var(--primary); font-size: 13px; font-weight: 600; text-decoration: none;">Forgot Password?</a>
+            </div>
+            <button type="submit" class="btn-login" id="btn-submit">Sign In 🚀</button>
+          </form>
+          <p style="text-align:center; margin-top:10px;">
+            <a href="javascript:void(0)" id="link-back-to-google" style="color:#94a3b8; font-size:12px; text-decoration:underline;">← Back to Google Sign-In</a>
+          </p>
+        </div>
+
+        <div class="demo-accounts">
+          <strong>Need help?</strong><br>
+          Ask your admin to add you in the Users tab if you can't sign in.
+        </div>
+      </div>
+
+      <!-- ── Forgot Password Section ────────────────── -->
+      <div id="forgot-section" style="display:none;">
+        <form id="forgot-form">
+          <p style="font-size: 13px; color: #64748b; margin-top: 0; margin-bottom: 18px; line-height: 1.5;">
+            Enter your Username or Email address below. We'll search for your account and send a password recovery link to your registered email.
+          </p>
+          <div class="form-group">
+            <label class="form-label" for="forgot-identity">Username or Email</label>
+            <input type="text" class="form-input" id="forgot-identity" placeholder="e.g. admin or admin@example.com" required>
+          </div>
+          <button type="submit" class="btn-login" id="btn-forgot-submit">Send Reset Link 📧</button>
+          <div style="text-align: center; margin-top: 18px;">
+            <a href="javascript:void(0)" id="link-login-back" style="color: #64748b; font-size: 13px; font-weight: 600; text-decoration: none;">← Back to Sign In</a>
+          </div>
+        </form>
+      </div>
+
+      <!-- ── Reset Password Section ─────────────────── -->
+      <div id="reset-section" style="display:none;">
+        <form id="reset-form">
+          <p style="font-size: 13px; color: #64748b; margin-top: 0; margin-bottom: 18px; line-height: 1.5;">
+            Create a secure new password for your account. Ensure it is different from your previous password.
+          </p>
+          <div class="form-group">
+            <label class="form-label" for="reset-password">New Password</label>
+            <input type="password" class="form-input" id="reset-password" placeholder="Enter new password" required minlength="4">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reset-confirm">Confirm New Password</label>
+            <input type="password" class="form-input" id="reset-confirm" placeholder="Re-enter new password" required minlength="4">
+          </div>
+          <button type="submit" class="btn-login" id="btn-reset-submit">Reset Password 🔑</button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script>
+    'use strict';
+
+    // Same Firebase project the customer-facing React site uses
+    // (sardar-pharmacy) — Google Sign-In accounts are shared across both.
+    firebase.initializeApp({
+      apiKey: "AIzaSyBSVXxT36bdORf053Wj6I5zTicd4tUkZoM",
+      authDomain: "sardar-pharmacy.firebaseapp.com",
+      projectId: "sardar-pharmacy",
+      storageBucket: "sardar-pharmacy.firebasestorage.app",
+      messagingSenderId: "650490924025",
+      appId: "1:650490924025:web:ba09f140352cbfa4c14b28"
+    });
+
+    // Parse token from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetToken = urlParams.get('token');
+
+    // UI elements
+    const loginSection = document.getElementById('login-section');
+    const forgotSection = document.getElementById('forgot-section');
+    const resetSection = document.getElementById('reset-section');
+
+    const loginForm = document.getElementById('login-form');
+    const forgotForm = document.getElementById('forgot-form');
+    const resetForm = document.getElementById('reset-form');
+
+    const errorDiv = document.getElementById('error-message');
+    const infoDiv = document.getElementById('info-message');
+
+    const gsChecking = document.getElementById('gs-checking');
+    const gsDenied = document.getElementById('gs-denied');
+    const gsDeniedEmail = document.getElementById('gs-denied-email');
+    const gsPrompt = document.getElementById('gs-prompt');
+    const staffLoginForm = document.getElementById('staff-login-form');
+
+    function showState(state) {
+      gsChecking.style.display = state === 'checking' ? 'block' : 'none';
+      gsDenied.style.display = state === 'denied' ? 'block' : 'none';
+      gsPrompt.style.display = state === 'prompt' ? 'block' : 'none';
+      staffLoginForm.style.display = state === 'staff' ? 'block' : 'none';
+    }
+
+    if (!resetToken) {
+      // Already logged into the POS from a prior session — skip straight in.
+      const activeUser = localStorage.getItem('pos_user');
+      if (activeUser) {
+        try {
+          const user = JSON.parse(activeUser);
+          window.location.href = '/pos' + (user.role === 'cashier' ? '/new-order' : '/dashboard');
+        } catch (e) {
+          localStorage.removeItem('pos_user');
+        }
+      } else {
+        // Not logged into the POS yet — check whether they're already
+        // signed into the main site's Firebase Auth. Once deployed, /pos
+        // shares the same origin as the main site, so an existing session
+        // there is picked up here automatically — no extra click needed
+        // for an already-signed-in authorized staff member. (Locally, on
+        // a different port, there's no shared session yet — use the
+        // Google button below to sign in directly on this origin.)
+        showState('checking');
+        firebase.auth().onAuthStateChanged(async (fbUser) => {
+          if (!fbUser) {
+            showState('prompt');
+            return;
+          }
+          try {
+            const idToken = await fbUser.getIdToken();
+            const res = await fetch('/api/auth/google-login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ idToken })
+            });
+            const data = await res.json();
+            if (res.ok && data.success && data.user) {
+              localStorage.setItem('pos_user', JSON.stringify(data.user));
+              window.location.href = '/pos' + (data.user.role === 'cashier' ? '/new-order' : '/dashboard');
+            } else {
+              gsDeniedEmail.textContent = fbUser.email || '';
+              showState('denied');
+            }
+          } catch (err) {
+            gsDeniedEmail.textContent = fbUser.email || '';
+            showState('denied');
+          }
+        });
+      }
+    } else {
+      // Show reset section if token is present
+      loginSection.style.display = 'none';
+      forgotSection.style.display = 'none';
+      resetSection.style.display = 'block';
+    }
+
+    document.getElementById('btn-gs-signout').onclick = async () => {
+      try { await firebase.auth().signOut(); } catch (e) {}
+      showState('prompt');
+    };
+
+    document.getElementById('link-staff-login').onclick = () => showState('staff');
+    document.getElementById('link-back-to-google').onclick = () => showState('prompt');
+
+    // Toggle forms
+    document.getElementById('link-forgot').onclick = () => {
+      errorDiv.style.display = 'none';
+      infoDiv.style.display = 'none';
+      loginSection.style.display = 'none';
+      forgotSection.style.display = 'block';
+    };
+
+    document.getElementById('link-login-back').onclick = () => {
+      errorDiv.style.display = 'none';
+      infoDiv.style.display = 'none';
+      forgotSection.style.display = 'none';
+      loginSection.style.display = 'block';
+    };
+
+    // Form handlers
+    document.getElementById('btn-google-signin').onclick = async () => {
+      const googleBtn = document.getElementById('btn-google-signin');
+      const originalHtml = googleBtn.innerHTML;
+      errorDiv.style.display = 'none';
+      infoDiv.style.display = 'none';
+      googleBtn.disabled = true;
+      googleBtn.innerText = 'Signing in...';
+
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        const result = await firebase.auth().signInWithPopup(provider);
+        const idToken = await result.user.getIdToken();
+
+        const res = await fetch('/api/auth/google-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Google sign-in failed');
+
+        localStorage.setItem('pos_user', JSON.stringify(data.user));
+        window.location.href = '/pos' + (data.user.role === 'cashier' ? '/new-order' : '/dashboard');
+      } catch (err) {
+        errorDiv.innerText = '⚠️ ' + err.message;
+        errorDiv.style.display = 'block';
+        googleBtn.disabled = false;
+        googleBtn.innerHTML = originalHtml;
+      }
+    };
+
+    loginForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value;
+      const submitBtn = document.getElementById('btn-submit');
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Signing In... ⌛';
+      errorDiv.style.display = 'none';
+      infoDiv.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Login verification failed');
+        }
+
+        if (data.success && data.user) {
+          localStorage.setItem('pos_user', JSON.stringify(data.user));
+          window.location.href = '/pos' + (data.user.role === 'cashier' ? '/new-order' : '/dashboard');
+        } else {
+          throw new Error('Authentication failed');
+        }
+      } catch (err) {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Sign In 🚀';
+        errorDiv.innerText = '⚠️ ' + err.message;
+        errorDiv.style.display = 'block';
+      }
+    };
+
+    forgotForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const identity = document.getElementById('forgot-identity').value.trim();
+      const submitBtn = document.getElementById('btn-forgot-submit');
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Searching account... ⌛';
+      errorDiv.style.display = 'none';
+      infoDiv.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identity })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Recovery request failed');
+        }
+
+        infoDiv.innerText = '📨 ' + data.message;
+        if (data._debugLink) {
+          // Print debug link in console as well for direct click access
+          console.log('PharmaPOS Dev Reset Link:', data._debugLink);
+          infoDiv.innerHTML += `<br><br><strong style="color:#047857;">[Dev Sandbox Mode]</strong> Reset Link:<br><a href="${data._debugLink}" style="color:#2563eb; word-break:break-all; text-decoration:underline;">${data._debugLink}</a>`;
+        }
+        infoDiv.style.display = 'block';
+
+        forgotForm.reset();
+        forgotSection.style.display = 'none';
+        loginSection.style.display = 'block';
+      } catch (err) {
+        errorDiv.innerText = '⚠️ ' + err.message;
+        errorDiv.style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Send Reset Link 📧';
+      }
+    };
+
+    resetForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const newPassword = document.getElementById('reset-password').value;
+      const confirmPassword = document.getElementById('reset-confirm').value;
+      const submitBtn = document.getElementById('btn-reset-submit');
+
+      if (newPassword !== confirmPassword) {
+        errorDiv.innerText = '⚠️ Passwords do not match!';
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Resetting password... ⌛';
+      errorDiv.style.display = 'none';
+      infoDiv.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: resetToken, newPassword })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Password reset failed');
+        }
+
+        // Clean url query parameter token
+        window.history.replaceState(null, '', window.location.pathname);
+
+        infoDiv.innerText = '✅ ' + data.message;
+        infoDiv.style.display = 'block';
+
+        resetForm.reset();
+        resetSection.style.display = 'none';
+        loginSection.style.display = 'block';
+      } catch (err) {
+        errorDiv.innerText = '⚠️ ' + err.message;
+        errorDiv.style.display = 'block';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Reset Password 🔑';
+      }
+    };
+  </script>
+</body>
+</html>

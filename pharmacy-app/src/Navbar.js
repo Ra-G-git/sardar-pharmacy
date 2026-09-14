@@ -6,6 +6,7 @@ import Cart from "./Cart";
 import Auth from "./Auth";
 import MyOrders from "./MyOrders";
 import PrescriptionUpload from "./PrescriptionUpload";
+import logo from "./logo.svg";
 
 function Navbar() {
   const { cart } = useCart();
@@ -46,7 +47,7 @@ function Navbar() {
           boxShadow: scrolled ? "0 4px 20px rgba(0,0,0,0.15)" : "none",
         }}>
           <div style={styles.logoSection}>
-            <span style={styles.logoIcon}>💊</span>
+            <img src={logo} alt="Sardar Pharmacy" style={styles.logoImg} />
             <div>
               <h2 style={styles.logoText}>Sardar Pharmacy</h2>
               <p style={styles.logoSub}>Mirpur, Dhaka</p>
@@ -158,8 +159,10 @@ const styles = {
     alignItems: "center",
     gap: "12px",
   },
-  logoIcon: {
-    fontSize: "32px",
+  logoImg: {
+    height: "36px",
+    width: "auto",
+    objectFit: "contain",
   },
   logoText: {
     color: "white",
