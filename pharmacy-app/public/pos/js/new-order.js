@@ -697,6 +697,7 @@
           H.showToast(`Selling beyond recorded stock (${item.stock}) — remember to update inventory.`, 'warning');
         }
       } else {
+        item.customDiscount = item.customDiscount || 0; // % off this line, skips the global discount below
         this.cart.push(item);
         if (limited && item.stock <= 0) {
           H.showToast('Recorded stock is 0 — sale allowed, remember to restock.', 'warning');
@@ -745,6 +746,10 @@
                 <span>৳</span>
                 <input type="number" class="input-price form-input" value="${item.unitPrice}" min="0.01" step="0.01" style="padding:4px 6px; height:28px; width:100%; font-size:12px; font-weight:600;">
               </div>
+              <div style="display:flex; align-items:center; gap:4px; max-width:110px; margin-top:4px;">
+                <input type="number" class="input-item-discount form-input" value="${item.customDiscount || ''}" min="0" max="100" step="0.1" placeholder="Disc %" title="Discount just for this item — skips the global discount below" style="padding:4px 6px; height:24px; width:100%; font-size:11px;">
+                <span style="font-size:10px; color:var(--text-muted);">%</span>
+              </div>
             </td>
             <td>
               <div class="qty-control">
@@ -753,7 +758,16 @@
                 <button class="btn-qty-inc">+</button>
               </div>
             </td>
-            <td style="font-weight:700;">${H.formatCurrency(item.unitPrice * item.qty)}</td>
+            <td style="font-weight:700;">
+              ${(() => {
+                const lineSubtotal = item.unitPrice * item.qty;
+                const disc = parseFloat(item.customDiscount) || 0;
+                const lineTotal = disc > 0 ? lineSubtotal * (1 - disc / 100) : lineSubtotal;
+                return disc > 0
+                  ? `${H.formatCurrency(lineTotal)}<div style="font-size:10px; font-weight:600; color:var(--success);">-${disc}% (${H.formatCurrency(lineSubtotal - lineTotal)} off)</div>`
+                  : H.formatCurrency(lineSubtotal);
+              })()}
+            </td>
             <td>
               <button class="btn btn-secondary btn-sm btn-cart-edit" style="padding:4px 8px;" title="Edit this medicine">✏️</button>
               <button class="btn btn-danger btn-sm btn-qty-remove" style="padding:4px 8px;">🗑️</button>
@@ -820,6 +834,15 @@
           item.stripPrice = item.byPiece ? val * unitSize : val;
           // Re-render and recalculate without clearing input focus if possible,
           // but calling renderCart() is simple and correct
+          this.renderCart();
+          this.recalculate();
+        };
+
+        row.querySelector('.input-item-discount').onchange = (e) => {
+          let val = parseFloat(e.target.value) || 0;
+          if (val < 0) val = 0;
+          if (val > 100) val = 100;
+          item.customDiscount = val;
           this.renderCart();
           this.recalculate();
         };
@@ -904,19 +927,7 @@
 
           // Auto-balance remaining payment amount across other split row
           if (this.payments.length > 1) {
-            const subtotal = this.cart.reduce((s, i) => s + (i.unitPrice * i.qty), 0);
-            const discType = document.getElementById('discount-type').value;
-            const discVal = parseFloat(document.getElementById('discount-value').value) || 0;
-            let discountAmount = 0;
-            if (discType === 'percentage') {
-              discountAmount = subtotal * (discVal / 100);
-            } else if (discType === 'amount') {
-              discountAmount = discVal;
-            }
-            if (discountAmount > subtotal) discountAmount = subtotal;
-            const taxPercent = parseFloat(document.getElementById('tax-percent').value) || 0;
-            const taxAmount = (subtotal - discountAmount) * (taxPercent / 100);
-            const grandTotal = subtotal - discountAmount + taxAmount;
+            const { grandTotal } = this.calculateTotals();
 
             let balancingIdx = this.payments.length - 1;
             if (idx === balancingIdx) {
@@ -971,54 +982,52 @@
       });
     },
 
-    recalculate() {
-      const H = POS.Helpers;
-
-      // 1. Calculate Subtotal
+    // Single source of truth for subtotal/discount/tax/grandTotal — used by
+    // recalculate() (live summary), split-payment auto-balancing, and the
+    // final order submission, so all three can never drift out of sync.
+    calculateTotals() {
       let subtotal = 0;
+      let itemDiscountsTotal = 0;
+      let eligibleForGlobalDiscount = 0;
+
       this.cart.forEach(item => {
-        subtotal += (item.unitPrice * item.qty);
+        const lineSubtotal = item.unitPrice * item.qty;
+        subtotal += lineSubtotal;
+        const itemDisc = parseFloat(item.customDiscount) || 0;
+        if (itemDisc > 0) {
+          itemDiscountsTotal += lineSubtotal * (itemDisc / 100);
+        } else {
+          eligibleForGlobalDiscount += lineSubtotal;
+        }
       });
 
-      // 2. Calculate Discount
       const discType = document.getElementById('discount-type').value;
       const discVal = parseFloat(document.getElementById('discount-value').value) || 0;
-      let discountAmount = 0;
-
+      let globalDiscountAmount = 0;
       if (discType === 'percentage') {
-        discountAmount = subtotal * (discVal / 100);
+        globalDiscountAmount = eligibleForGlobalDiscount * (discVal / 100);
       } else if (discType === 'amount') {
-        discountAmount = discVal;
+        globalDiscountAmount = discVal;
       }
+      if (globalDiscountAmount > eligibleForGlobalDiscount) globalDiscountAmount = eligibleForGlobalDiscount;
 
-      // Keep discount <= subtotal
-      if (discountAmount > subtotal) discountAmount = subtotal;
-
-      // 3. Calculate Tax
+      const discountAmount = itemDiscountsTotal + globalDiscountAmount;
       const taxPercent = parseFloat(document.getElementById('tax-percent').value) || 0;
       const taxAmount = (subtotal - discountAmount) * (taxPercent / 100);
-
-      // 4. Grand Total
       const grandTotal = subtotal - discountAmount + taxAmount;
 
-      // 5. Default single payment row amount to grandTotal
+      return { subtotal, itemDiscountsTotal, globalDiscountAmount, discountAmount, taxPercent, taxAmount, grandTotal };
+    },
+
+    recalculate() {
+      const H = POS.Helpers;
+      const { subtotal, discountAmount, taxAmount, grandTotal } = this.calculateTotals();
+
+      // Default single payment row amount to grandTotal
       if (this.payments.length === 1) {
         this.payments[0].amount = grandTotal;
         const pInput = document.querySelector('.payment-amount-input');
         if (pInput) pInput.value = grandTotal.toFixed(2);
-      }
-
-      // 6. Total Paid sum
-      const totalPaid = this.payments.reduce((s, p) => s + p.amount, 0);
-
-      // 7. Due & Change
-      let due = 0;
-      let change = 0;
-
-      if (totalPaid >= grandTotal) {
-        change = totalPaid - grandTotal;
-      } else {
-        due = grandTotal - totalPaid;
       }
 
       // Update Summary Fields
@@ -1038,20 +1047,9 @@
       }
 
       const salesDate = document.getElementById('sales-date').value;
-      const subtotal = this.cart.reduce((s, i) => s + (i.unitPrice * i.qty), 0);
-
+      const { subtotal, discountAmount, taxPercent, taxAmount, grandTotal } = this.calculateTotals();
       const discType = document.getElementById('discount-type').value;
       const discVal = parseFloat(document.getElementById('discount-value').value) || 0;
-      let discountAmount = 0;
-      if (discType === 'percentage') {
-        discountAmount = subtotal * (discVal / 100);
-      } else if (discType === 'amount') {
-        discountAmount = discVal;
-      }
-
-      const taxPercent = parseFloat(document.getElementById('tax-percent').value) || 0;
-      const taxAmount = (subtotal - discountAmount) * (taxPercent / 100);
-      const grandTotal = subtotal - discountAmount + taxAmount;
 
       const totalPaid = this.payments.reduce((s, p) => s + p.amount, 0);
 
@@ -1102,7 +1100,12 @@
         byPiece: item.byPiece || false,
         qty: item.qty,
         unitPrice: item.unitPrice,
-        total: item.unitPrice * item.qty
+        // Per-item discount (%) set on this cart row — skips the global
+        // discount above, see calculateTotals(). total already reflects it.
+        itemDiscount: parseFloat(item.customDiscount) || 0,
+        total: (parseFloat(item.customDiscount) || 0) > 0
+          ? (item.unitPrice * item.qty) * (1 - (parseFloat(item.customDiscount) / 100))
+          : item.unitPrice * item.qty
       }));
 
       const orderPaymentsList = this.payments.map(p => ({

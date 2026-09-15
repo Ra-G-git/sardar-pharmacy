@@ -303,14 +303,21 @@ async function createOrder({ order, items, payments }) {
     items: (items || []).map(i => {
       const qty = i.qty ?? i.quantity ?? 0;
       const unitPrice = i.unitPrice ?? i.price ?? 0;
+      const itemDiscount = parseFloat(i.itemDiscount) || 0;
+      // Use the client's computed total when given — it already accounts
+      // for this item's own discount (see New Order's per-item Disc %
+      // field). Recomputing price*qty here would silently drop that
+      // discount from the stored order.
+      const total = i.total !== undefined ? i.total : unitPrice * qty;
       return {
         slug: i.productId || i.slug, name: i.productName || i.name, category: i.category || '',
         price: unitPrice, quantity: qty, unit: i.unit || '',
         unit_size: i.unit_size || '1', strength: i.strength || '', byPiece: i.byPiece || false,
+        itemDiscount,
         // pharmacy-pos's own screens read `qty`/`unitPrice`/`total`/
         // `productName` per item, not `quantity`/`price`/`name` — same
         // reason as grandTotal above.
-        qty, unitPrice, total: unitPrice * qty,
+        qty, unitPrice, total,
         productName: i.productName || i.name, variationName: i.variationName || '',
       };
     }),
