@@ -439,6 +439,19 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
+// Global safety net — Express 4 does NOT automatically catch errors thrown
+// inside an async route handler (only Express 5 does). If something throws
+// outside a route's own try/catch — or a serverless cold-start issue kills
+// the response mid-flight — this is what stands between that and the
+// browser getting an empty body it can't parse as JSON. Must be registered
+// LAST, with all four arguments (that's what makes Express treat it as an
+// error handler rather than a normal middleware).
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: err?.message || 'Unexpected server error' });
+});
+
 // Listener — only runs when this file is executed directly (local dev / a
 // traditional host). On Vercel, api/pos/[...path].js imports `app` instead
 // and Vercel handles invocation, so this block is skipped there.
