@@ -1,7 +1,10 @@
 (function () {
   'use strict';
 
-  const API_BASE = window.location.origin;
+  // Backend now runs on Render (not Vercel serverless), since Vercel's
+  // serverless functions were hanging indefinitely on Firestore Admin SDK
+  // reads. Replace with your actual Render URL once deployed.
+  const API_BASE = 'https://sardar-pharmacy.onrender.com';
 
   const Store = {
     init() {
