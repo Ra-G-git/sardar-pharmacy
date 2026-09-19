@@ -17,35 +17,40 @@ if (!admin.apps.length) {
 
   try {
     if (process.env.FIREBASE_SERVICE_ACCOUNT_B64) {
-      // Preferred deployment path: base64-encoded service account JSON
       const json = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_B64, 'base64').toString('utf8');
       const parsed = JSON.parse(json);
       credential = admin.credential.cert(parsed);
       console.log('[firebaseAdmin] Loaded service account (base64) for project:', parsed.project_id);
     } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      // Legacy deployment path: raw JSON pasted into the env var
       const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
       credential = admin.credential.cert(parsed);
       console.log('[firebaseAdmin] Loaded service account (raw JSON) for project:', parsed.project_id);
     } else {
-      // Local dev: read from file
       credential = admin.credential.cert(require('./serviceAccountKey.json'));
       console.log('[firebaseAdmin] Loaded service account from local file');
     }
   } catch (err) {
-    // Without this catch, a bad env var throws at module load time —
-    // before Express ever starts — and Vercel returns an empty response
-    // body with no readable error. Logging here makes the real cause
-    // visible in the Vercel Functions log tab instead of a silent crash.
     console.error('[firebaseAdmin] FAILED to load/parse service account credentials:', err.message);
     throw err;
   }
 
   admin.initializeApp({
     credential,
-    projectId: 'sardar-pharmacy', // matches firebaseConfig.projectId in your React app
+    projectId: 'sardar-pharmacy',
   });
 }
 
 const db = admin.firestore();
+
+// CRITICAL for serverless environments (Vercel, Cloudflare Workers, etc.):
+// the Firestore Admin SDK defaults to gRPC, which relies on a long-lived
+// HTTP/2 connection. That connection negotiation frequently hangs forever
+// in sandboxed serverless runtimes instead of erroring out — resulting in
+// a silent FUNCTION_INVOCATION_TIMEOUT with no visible outgoing request,
+// no thrown error, and no log output after this point. Forcing REST
+// transport avoids gRPC entirely and uses plain HTTPS requests instead,
+// which work reliably in these environments.
+db.settings({ preferRest: true });
+console.log('[firebaseAdmin] Firestore configured to use REST transport (preferRest)');
+
 module.exports = { admin, db };
