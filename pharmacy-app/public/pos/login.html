@@ -309,7 +309,7 @@
           }
           try {
             const idToken = await fbUser.getIdToken();
-            const res = await fetch('/api/auth/google-login', {
+            const res = await fetch('https://sardar-pharmacy.onrender.com/api/auth/google-login', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ idToken })
@@ -372,7 +372,7 @@
         const result = await firebase.auth().signInWithPopup(provider);
         const idToken = await result.user.getIdToken();
 
-        const res = await fetch('/api/auth/google-login', {
+        const res = await fetch('https://sardar-pharmacy.onrender.com/api/auth/google-login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken })
@@ -402,7 +402,7 @@
       infoDiv.style.display = 'none';
 
       try {
-        const res = await fetch('/api/auth/login', {
+        const res = await fetch('https://sardar-pharmacy.onrender.com/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
@@ -438,7 +438,7 @@
       infoDiv.style.display = 'none';
 
       try {
-        const res = await fetch('/api/auth/forgot-password', {
+        const res = await fetch('https://sardar-pharmacy.onrender.com/api/auth/forgot-password', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identity })
@@ -487,7 +487,7 @@
       infoDiv.style.display = 'none';
 
       try {
-        const res = await fetch('/api/auth/reset-password', {
+        const res = await fetch('https://sardar-pharmacy.onrender.com/api/auth/reset-password', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ token: resetToken, newPassword })
