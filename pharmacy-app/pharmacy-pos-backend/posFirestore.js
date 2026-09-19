@@ -152,8 +152,23 @@ const SETTINGS_DEFAULTS = {
   invoice_logo: '/pos/img/logo.svg',
 };
 
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`[timeout] ${label} did not respond within ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 async function getSettings() {
-  const doc = await db.collection('pos_settings').doc('config').get();
+  console.log('[getSettings] starting Firestore read...');
+  const doc = await withTimeout(
+    db.collection('pos_settings').doc('config').get(),
+    8000,
+    'db.collection(pos_settings).doc(config).get()'
+  );
+  console.log('[getSettings] Firestore read completed, doc.exists =', doc.exists);
   const stored = doc.exists ? doc.data() : {};
   const merged = { ...SETTINGS_DEFAULTS };
   // Only an explicit non-empty value overrides a default — an empty string
