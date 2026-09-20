@@ -462,7 +462,7 @@
       };
       const items = (rawItems || []).map(it => ({
         ...it,
-        productName: it.productName || it.name || '',
+        productName: this.withStrength(it.productName || it.name || '', it.strength),
         qty: it.qty ?? it.quantity ?? 0,
         unitPrice: it.unitPrice ?? it.price ?? 0,
         total: it.total ?? ((it.unitPrice ?? it.price ?? 0) * (it.qty ?? it.quantity ?? 0)),
@@ -797,6 +797,95 @@ _Thank you for shopping with us!_`;
       const d = document.createElement('div');
       d.textContent = str || '';
       return d.innerHTML;
+    },
+
+    // esc() above is for element text — it does NOT escape quotes, so it is not
+    // safe inside an attribute like value="...". Use this for attributes.
+    escAttr(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    },
+
+    /* ── Medicine search & display ─────────────────────
+       The catalog is ~20k rows and is filtered on every keystroke, so each
+       row's lowercased search text is built once and cached (WeakMap: it is
+       dropped automatically when the catalog is reloaded). */
+    _hay: new WeakMap(),
+    _sugg: new WeakMap(),
+    _hayFor(p) {
+      let h = this._hay.get(p);
+      if (!h) {
+        const lc = (v) => (v == null ? '' : String(v)).toLowerCase();
+        const primary = [p.name, p.sku, p.barcode, p.tag].map(lc).join(' ');
+        const detail = primary + ' ' + [
+          p.generic_name ?? p.generic, p.manufacturer_name ?? p.brand, p.strength, p.category_name
+        ].map(lc).join(' ');
+        h = { primary, detail };
+        this._hay.set(p, h);
+      }
+      return h;
+    },
+    searchTokens(query) {
+      return String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
+    },
+    // 0  = every word is found in the name / SKU / barcode / tag
+    // 1  = every word is found only when generic, manufacturer, strength or
+    //      form are included ("paracetamol", "square", "500 mg", "syrup")
+    // -1 = no match
+    catalogRank(p, tokens) {
+      if (!tokens.length) return -1;
+      const h = this._hayFor(p);
+      if (tokens.every(t => h.primary.includes(t))) return 0;
+      if (tokens.every(t => h.detail.includes(t))) return 1;
+      return -1;
+    },
+    // "Napa" + "500 mg" -> "Napa 500 mg" (plain text: receipts, WhatsApp).
+    // Many medicines share one brand name across strengths/forms, so the
+    // strength has to travel with the name.
+    withStrength(name, strength) {
+      const n = String(name || '');
+      const s = String(strength || '').trim();
+      if (!s || n.toLowerCase().includes(s.toLowerCase())) return n;
+      return n + ' ' + s;
+    },
+    strengthBadge(strength) {
+      const s = String(strength || '').trim();
+      if (!s) return '';
+      // Leading space is a real character so copied/read-out text is "Napa 500 mg", not "Napa500 mg".
+      return ` <span style="display:inline-block; font-size:10px; font-weight:800; padding:1px 6px; margin-left:2px; border-radius:8px; background:#eef2ff; color:#4338ca; vertical-align:middle; white-space:nowrap;">${this.esc(s)}</span>`;
+    },
+    // Distinct values of the four free-text product fields, most common first,
+    // spelling variants that differ only by case merged. Cached per catalog.
+    catalogSuggestions(catalog) {
+      let out = this._sugg.get(catalog);
+      if (out) return out;
+      const distinct = (getter) => {
+        const byKey = new Map(); // lowercase -> { total, spellings: Map }
+        for (const p of catalog) {
+          const v = String(getter(p) ?? '').trim();
+          if (!v) continue;
+          const k = v.toLowerCase();
+          let e = byKey.get(k);
+          if (!e) { e = { total: 0, spellings: new Map() }; byKey.set(k, e); }
+          e.total++;
+          e.spellings.set(v, (e.spellings.get(v) || 0) + 1);
+        }
+        return [...byKey.values()]
+          .sort((a, b) => b.total - a.total)
+          .map(e => [...e.spellings.entries()].sort((a, b) => b[1] - a[1])[0][0]);
+      };
+      out = {
+        brand: distinct(p => p.manufacturer_name ?? p.brand),
+        generic: distinct(p => p.generic_name ?? p.generic),
+        category: distinct(p => p.category_name),
+        strength: distinct(p => p.strength),
+      };
+      this._sugg.set(catalog, out);
+      return out;
+    },
+    datalistOptions(values) {
+      return values.map(v => `<option value="${this.escAttr(v)}"></option>`).join('');
     },
 
     /* ── Category Icons ─────────────────────────────

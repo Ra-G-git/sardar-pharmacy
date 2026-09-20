@@ -122,13 +122,31 @@
     },
 
     /* ── API Client CRUD ────────────────────────────── */
+    // Fetch a collection, retrying briefly when the failure is likely temporary
+    // (Render's free tier can be asleep for 30-60s: network errors and 5xx).
+    // 4xx errors are not retried. Throws if it still fails.
+    async _fetchAll(collection) {
+      const delays = [1500, 3000, 6000];
+      let lastErr;
+      for (let attempt = 0; attempt <= delays.length; attempt++) {
+        let retryable = true;
+        try {
+          const res = await fetch(`${API_BASE}/api/${collection}`, { headers: this.getHeaders() });
+          if (res.ok) return await res.json();
+          lastErr = new Error(`HTTP error ${res.status}`);
+          retryable = res.status >= 500;
+        } catch (err) {
+          lastErr = err;
+        }
+        if (!retryable || attempt === delays.length) break;
+        await new Promise(r => setTimeout(r, delays[attempt]));
+      }
+      throw lastErr;
+    },
+
     async getAll(collection) {
       try {
-        const res = await fetch(`${API_BASE}/api/${collection}`, {
-          headers: this.getHeaders()
-        });
-        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-        return await res.json();
+        return await this._fetchAll(collection);
       } catch (err) {
         console.error(`Error fetching ${collection}:`, err);
         return [];
@@ -157,7 +175,16 @@
     _productCatalogPromise: null,
     async getProductCatalog() {
       if (!this._productCatalogPromise) {
-        this._productCatalogPromise = this.getAll('products');
+        // A failed load must NOT be cached: previously an error (e.g. the server
+        // still waking up) was remembered as an empty catalog until the page was
+        // reloaded. On failure this resolves to [] but clears the cache, so the
+        // next search tries again.
+        const p = this._fetchAll('products').catch(err => {
+          console.error('Error fetching products:', err);
+          if (this._productCatalogPromise === p) this._productCatalogPromise = null;
+          return [];
+        });
+        this._productCatalogPromise = p;
       }
       return this._productCatalogPromise;
     },

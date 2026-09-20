@@ -45,6 +45,7 @@
         return {
           productId: i.productId,
           productName: i.productName,
+          strength: i.strength || (p ? p.strength : '') || '',
           variationName: i.variationName,
           unitPrice: parseFloat(i.unitPrice) || 0,
           qty: parseInt(i.qty) || 1,
@@ -281,18 +282,21 @@
           return;
         }
 
-        const prods = await S.getAll('products');
+        // Same cached catalog as New Order (this used to re-download all ~20k
+        // products on every keystroke).
+        const prods = await S.getProductCatalog();
+        if (!prods.length) {
+          prodResults.innerHTML = `<div class="p-2 text-muted text-sm text-center">Couldn't load the medicine list — the server may be waking up. Try again in a few seconds.</div>`;
+          prodResults.classList.add('open');
+          return;
+        }
+        const tokens = H.searchTokens(query);
         const matches = [];
 
         prods.forEach(p => {
           if (p.deletedAt && p.deletedAt !== '0000-00-00 00:00:00') return;
 
-          const pNameMatch = p.name ? p.name.toLowerCase().includes(query) : false;
-          const pSkuMatch = p.sku ? p.sku.toLowerCase().includes(query) : false;
-          const pBarcodeMatch = p.barcode ? p.barcode.includes(query) : false;
-          const pTagMatch = p.tag ? p.tag.toLowerCase().includes(query) : false;
-
-          const mainMatch = pNameMatch || pSkuMatch || pBarcodeMatch || pTagMatch;
+          const mainMatch = H.catalogRank(p, tokens) >= 0;
           if (mainMatch) {
             if (p.variations && p.variations.length > 0) {
               p.variations.forEach(v => {
@@ -317,6 +321,10 @@
           }
         });
 
+        // Name matches first, then ones found only via generic/maker/strength.
+        const rankOf = (m) => { const r = H.catalogRank(m.product, tokens); return r < 0 ? 2 : r; };
+        matches.sort((a, b) => rankOf(a) - rankOf(b));
+
         prodResults.innerHTML = '';
         if (matches.length === 0) {
           prodResults.innerHTML = `<div class="p-2 text-muted text-sm text-center">No products matched.</div>`;
@@ -324,11 +332,12 @@
           return;
         }
 
-        matches.slice(0, 10).forEach(m => {
+        matches.slice(0, 20).forEach(m => {
           const item = document.createElement('div');
           item.className = 'product-result-item';
           item.innerHTML = `
-            <div style="font-weight:600;">${H.esc(m.name)}</div>
+            <div style="font-weight:600;">${H.esc(m.name)}${H.strengthBadge(m.product.strength)}</div>
+            ${(m.product.category_name || m.product.generic_name || m.product.generic) ? `<div style="font-size:11px; color:#64748b;">${H.esc([m.product.category_name, m.product.generic_name ?? m.product.generic, m.product.manufacturer_name ?? m.product.brand].filter(Boolean).join(' · '))}</div>` : ''}
             <div style="font-size:11px; color:#64748b;">SKU: ${H.esc(m.sku)} | Stock: ${m.stock}</div>
             <div style="font-weight:700; color:var(--primary); font-size:12px;">${H.formatCurrency(m.price)}</div>
           `;
@@ -513,6 +522,7 @@
         this.cart.push({
           productId: item.product.id,
           productName: item.product.name,
+          strength: item.product.strength || '',
           variationName: item.variant ? item.variant.name : null,
           unitPrice: parseFloat(item.price),
           qty: 1,
@@ -547,7 +557,7 @@
             <div style="display:flex; align-items:center; gap:8px;">
               ${item.image ? `<img src="${item.image}" style="width:36px; height:36px; border-radius:var(--radius-xs); object-fit:cover; border:1px solid var(--border);">` : `<div style="width:36px; height:36px; border-radius:var(--radius-xs); background:var(--primary-50); display:flex; align-items:center; justify-content:center; font-size:16px;">📦</div>`}
               <div>
-                <div style="font-weight:600;">${H.esc(item.productName)}</div>
+                <div style="font-weight:600;">${H.esc(item.productName)}${H.strengthBadge(item.strength)}</div>
                 ${item.variationName ? `<div style="font-size:11px; color:#64748b;">${H.esc(item.variationName)}</div>` : ''}
               </div>
             </div>
@@ -824,6 +834,7 @@
         orderId,
         productId: item.productId,
         productName: item.productName,
+        strength: item.strength || '',
         variationName: item.variationName,
         qty: item.qty,
         unitPrice: item.unitPrice,

@@ -1098,24 +1098,30 @@
               </div>
               <div class="form-group" style="flex: 1;">
                 <label class="form-label">Manufacturer / Brand</label>
-                <input type="text" class="form-input" id="p-brand" value="${isEdit ? H.esc(p.brand || '') : ''}">
+                <input type="text" class="form-input" id="p-brand" list="dl-brand" autocomplete="off" value="${isEdit ? H.esc(p.brand || '') : ''}">
               </div>
               <div class="form-group" style="flex: 1;">
                 <label class="form-label">Generic Name</label>
-                <input type="text" class="form-input" id="p-generic" value="${isEdit ? H.esc(p.generic || '') : ''}">
+                <input type="text" class="form-input" id="p-generic" list="dl-generic" autocomplete="off" value="${isEdit ? H.esc(p.generic || '') : ''}">
               </div>
             </div>
 
             <div class="form-row">
               <div class="form-group" style="flex: 1;">
                 <label class="form-label">Category / Dosage Form</label>
-                <input type="text" class="form-input" id="p-category" value="${isEdit ? H.esc(p.category_name || '') : ''}" placeholder="e.g. Tablet, Syrup, Injection">
+                <input type="text" class="form-input" id="p-category" list="dl-category" autocomplete="off" value="${isEdit ? H.esc(p.category_name || '') : ''}" placeholder="e.g. Tablet, Syrup, Injection">
               </div>
               <div class="form-group" style="flex: 1;">
                 <label class="form-label">Strength</label>
-                <input type="text" class="form-input" id="p-strength" value="${isEdit ? H.esc(p.strength || '') : ''}" placeholder="e.g. 500 mg">
+                <input type="text" class="form-input" id="p-strength" list="dl-strength" autocomplete="off" value="${isEdit ? H.esc(p.strength || '') : ''}" placeholder="e.g. 500 mg">
               </div>
             </div>
+
+            <!-- Suggestions for the four fields above, filled from the catalog after the modal opens -->
+            <datalist id="dl-brand"></datalist>
+            <datalist id="dl-generic"></datalist>
+            <datalist id="dl-category"></datalist>
+            <datalist id="dl-strength"></datalist>
 
             <!-- Product Picture Section -->
             <div class="form-row" style="margin-bottom:15px;">
@@ -1183,6 +1189,20 @@
       `;
 
       overlay.classList.add('active');
+
+      // Manufacturer / Generic / Category / Strength suggestions come from the
+      // medicines already in the catalog (medicines.csv + anything added since),
+      // so a new medicine reuses the existing spelling instead of creating a variant.
+      // Filled after the modal is on screen so opening it never waits on the catalog.
+      S.getProductCatalog().then(catalog => {
+        if (!catalog.length) return;
+        const sg = H.catalogSuggestions(catalog);
+        const fill = (id, vals) => { const el = overlay.querySelector('#' + id); if (el) el.innerHTML = H.datalistOptions(vals); };
+        fill('dl-brand', sg.brand);
+        fill('dl-generic', sg.generic);
+        fill('dl-category', sg.category);
+        fill('dl-strength', sg.strength);
+      });
 
       const close = () => overlay.classList.remove('active');
       overlay.querySelector('#modal-close-prod').onclick = close;

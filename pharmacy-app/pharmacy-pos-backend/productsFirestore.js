@@ -21,20 +21,22 @@ function mergeRecord(csvRow, invDoc) {
     id: slug,
     slug,
     tracked: !!inv, // false = never edited/sold, CSV data only
-    medicine_name: csvRow.medicine_name,
-    generic_name: csvRow.generic_name,
-    category_name: csvRow.category_name,
-    strength: csvRow.strength || '',
-    manufacturer_name: csvRow.manufacturer_name || '',
+    // A value saved from the Edit Product form (stored on the Firestore doc) wins
+    // over the CSV's; otherwise edits to these fields were saved but never shown.
+    medicine_name: (inv && inv.medicine_name) || csvRow.medicine_name,
+    generic_name: (inv && inv.generic_name) || csvRow.generic_name,
+    category_name: (inv && inv.category_name) || csvRow.category_name,
+    strength: (inv && inv.strength) || csvRow.strength || '',
+    manufacturer_name: (inv && inv.manufacturer_name) || csvRow.manufacturer_name || '',
     unit: (inv && inv.unit) || csvRow.unit || '',
     unit_size: csvRow.unit_size || '1',
     price: (inv && inv.price) || csvRow.price,
     stock: inv ? (inv.stock ?? 0) : null, // null = untracked, not "zero"
     barcode: (inv && inv.barcode) || null,
     image: (inv && inv.image) || null,
-    name: csvRow.medicine_name,
-    generic: csvRow.generic_name,
-    brand: csvRow.manufacturer_name,
+    name: (inv && inv.medicine_name) || csvRow.medicine_name,
+    generic: (inv && inv.generic_name) || csvRow.generic_name,
+    brand: (inv && inv.manufacturer_name) || csvRow.manufacturer_name,
     sku: slug,
     sellingPrice: (inv && inv.price) || csvRow.price,
   };

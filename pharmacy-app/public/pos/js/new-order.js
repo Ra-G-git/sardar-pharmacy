@@ -246,6 +246,14 @@
         // this filters in-memory, same as the customer site's search, so
         // it's instant instead of round-tripping to the server per keystroke.
         const products = await S.getProductCatalog();
+        if (!products.length) {
+          // A real catalog is never empty, so this means the load failed (not
+          // cached — the next keystroke retries).
+          prodResults.innerHTML = `<div class="text-muted" style="padding:14px;">Couldn't load the medicine list — the server may be waking up. Try again in a few seconds.</div>`;
+          prodResults.classList.add('open');
+          return;
+        }
+        const tokens = H.searchTokens(query);
         const matches = [];
         const MAX_RESULTS = 30;
 
@@ -257,17 +265,17 @@
           if (p.deletedAt && p.deletedAt !== '0000-00-00 00:00:00') continue;
 
           // Check standard product sku / barcode / name / tag
-          const pNameMatch = p.name ? p.name.toLowerCase().includes(query) : false;
-          const pSkuMatch = p.sku ? p.sku.toLowerCase().includes(query) : false;
-          const pBarcodeMatch = p.barcode ? p.barcode.includes(query) : false;
-          const pTagMatch = p.tag ? p.tag.toLowerCase().includes(query) : false;
+          // Every word typed must match. Rank 0 = found in name/SKU/barcode/tag,
+          // rank 1 = found via generic name, manufacturer, strength or form.
+          const rank = H.catalogRank(p, tokens);
+          const mainMatch = rank >= 0;
 
           if (p.variations && p.variations.length > 0) {
             p.variations.forEach(v => {
               const vNameMatch = v.name ? v.name.toLowerCase().includes(query) : false;
               const vSkuMatch = v.sku ? v.sku.toLowerCase().includes(query) : false;
               const vBarcodeMatch = v.barcode ? v.barcode.includes(query) : false;
-              if (pNameMatch || pSkuMatch || pBarcodeMatch || pTagMatch || vNameMatch || vSkuMatch || vBarcodeMatch) {
+              if (mainMatch || vNameMatch || vSkuMatch || vBarcodeMatch) {
                 const calculatedStock = Math.floor(p.stock / (v.qty_per_unit || 1));
                 const calculatedPrice = v.price || (p.sellingPrice * (v.qty_per_unit || 1));
                 matches.push({
@@ -286,8 +294,12 @@
               }
             });
           } else {
-            if (pNameMatch || pSkuMatch || pBarcodeMatch || pTagMatch) {
+            if (mainMatch) {
               matches.push({
+                rank,
+                strength: p.strength || '',
+                generic: p.generic_name ?? p.generic ?? '',
+                maker: p.manufacturer_name ?? p.brand ?? '',
                 id: p.id,
                 name: p.name,
                 sku: p.sku,
@@ -309,6 +321,9 @@
         // ones with a real barcode assigned — are the pharmacist's curated
         // inventory, so surface those above plain untouched CSV matches.
         matches.sort((a, b) => {
+          // Name matches first, then ones found only via generic/maker/strength.
+          const aRank = a.rank ?? 0, bRank = b.rank ?? 0;
+          if (aRank !== bRank) return aRank - bRank;
           const aBar = a.barcode ? 1 : 0, bBar = b.barcode ? 1 : 0;
           if (aBar !== bBar) return bBar - aBar;
           const aTr = a.tracked ? 1 : 0, bTr = b.tracked ? 1 : 0;
@@ -340,6 +355,8 @@
                   qty: 1,
                   image: saved.image || null,
                   category: saved.category_name || '',
+                  strength: saved.strength || '',
+                  generic: saved.generic_name || '',
                   unit: '',
                   unitSize: 1,
                   stripPrice: parseFloat(saved.price) || 0,
@@ -364,10 +381,11 @@
             const stockLabel = stockFinite ? m.stock : '∞';
 
             return `
-              <div class="product-result-item" data-id="${m.id}" data-var="${H.esc(m.variationName)}" data-sku="${H.esc(m.sku)}" data-price="${m.price}" data-stock="${stockFinite ? m.stock : ''}" data-name="${H.esc(m.name)}" data-image="${m.image || ''}" data-category="${H.esc(m.category || '')}" data-unit="${H.esc(m.unit || '')}" data-unit-size="${m.unitSize || '1'}" style="display:flex; align-items:center;">
+              <div class="product-result-item" data-id="${m.id}" data-var="${H.esc(m.variationName)}" data-sku="${H.esc(m.sku)}" data-price="${m.price}" data-stock="${stockFinite ? m.stock : ''}" data-name="${H.esc(m.name)}" data-image="${m.image || ''}" data-category="${H.esc(m.category || '')}" data-strength="${H.escAttr(m.strength)}" data-generic="${H.escAttr(m.generic)}" data-unit="${H.esc(m.unit || '')}" data-unit-size="${m.unitSize || '1'}" style="display:flex; align-items:center;">
                 ${imgHtml}
-                <div style="flex:1;">
-                  <div class="pr-name">${H.esc(m.name)}</div>
+                <div style="flex:1; min-width:0;">
+                  <div class="pr-name">${H.esc(m.name)}${H.strengthBadge(m.strength)}</div>
+                  ${(m.category || m.generic || m.maker) ? `<div style="font-size:11px; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${H.esc([m.category, m.generic, m.maker].filter(Boolean).join(' · '))}</div>` : ''}
                   <div class="pr-sku">SKU: ${H.esc(m.sku)} | Stock: ${stockLabel}</div>
                 </div>
                 <div class="pr-price">${H.formatCurrency(m.price)}</div>
@@ -404,6 +422,8 @@
               qty: 1,
               image: ds.image,
               category: ds.category,
+              strength: ds.strength || '',
+              generic: ds.generic || '',
               unit: ds.unit || '',
               unitSize,
               // Original per-strip/pack price and byPiece flag — lets the
@@ -445,6 +465,8 @@
                 qty: 1,
                 image: p.image || null,
                 category: p.category_name,
+                strength: p.strength || '',
+                generic: p.generic_name ?? p.generic ?? '',
                 stock: p.stock == null ? null : parseInt(p.stock)
               };
             }
@@ -735,7 +757,8 @@
               <div style="display:flex; align-items:center;">
                 ${thumbHtml}
                 <div>
-                  <div class="cart-item-name">${H.esc(item.productName)}</div>
+                  <div class="cart-item-name">${H.esc(item.productName)}${H.strengthBadge(item.strength)}</div>
+                  ${(item.category || item.generic) ? `<div style="font-size:10px; color:#64748b;">${H.esc([item.category, item.generic].filter(Boolean).join(' · '))}</div>` : ''}
                   ${item.variationName ? `<div class="cart-item-variant">${H.esc(item.variationName)}</div>` : ''}
                   ${pieceToggleHtml}
                 </div>
@@ -868,6 +891,8 @@
             if (updated) {
               item.productName = updated.name;
               item.category = updated.category_name;
+              item.strength = updated.strength || '';
+              item.generic = updated.generic_name ?? updated.generic ?? '';
               // Deliberately NOT touching item.unitPrice here — the price
               // already in the cart (possibly hand-edited for this sale)
               // stays as-is; only name/category refresh from the edit.
@@ -1099,6 +1124,7 @@
         productName: item.productName,
         variationName: item.variationName,
         category: item.category || '',
+        strength: item.strength || '',
         unit: item.byPiece ? 'Piece' : (item.unit || ''),
         unit_size: item.unitSize || '1',
         byPiece: item.byPiece || false,
