@@ -950,6 +950,158 @@ _Thank you for shopping with us!_`;
     /* ── Payment methods ──────────────────────────── */
     paymentMethods: ['Cash', 'Card', 'bKash', 'Nagad', 'Rocket', 'Bank Transfer', 'Other'],
 
+    /* ── Payment method colours & icons (dashboard) ─────
+       Brand colours and inline-SVG icons, taken from sajidhasanratul/pharmacy-pos.
+       Looked up by method NAME, so nothing here needs a payments-settings backend. */
+    getPaymentMethodColor(method) {
+      if (!method) return '#64748B';
+      switch (String(method).toLowerCase().trim()) {
+        case 'bkash': return '#E2136E';
+        case 'nagad': return '#F7941D';
+        case 'rocket': return '#8C3494';
+        case 'bank transfer':
+        case 'bank': return '#2563EB';
+        case 'cash': return '#059669';
+        case 'card': return '#4338CA';
+        case 'other': return '#64748B';
+        default: return '#0d9488';
+      }
+    },
+
+    renderPresetIcon(presetId, size = 28, bg = '#f8fafc', color = '#0d9488') {
+      const pid = String(presetId || '').toLowerCase().trim();
+      const s = size;
+
+      switch (pid) {
+        case 'bkash':
+          return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px; flex-shrink:0;">
+            <rect width="48" height="48" rx="8" fill="#E2136E"/>
+            <path d="M12 18L24 10L19 25Z" fill="#FFFFFF"/>
+            <path d="M24 10L38 15L27 24Z" fill="#FCE4EC"/>
+            <path d="M19 25L24 10L24 37Z" fill="#F8BBD0"/>
+            <path d="M27 24L24 10L24 37Z" fill="#FFFFFF"/>
+            <path d="M12 18L19 25L15 29Z" fill="#F48FB1"/>
+            <path d="M38 15L27 24L32 29Z" fill="#FFFFFF"/>
+            <path d="M24 37L19 25L24 29Z" fill="#F06292"/>
+            <path d="M24 37L27 24L24 29Z" fill="#F8BBD0"/>
+          </svg>`;
+
+        case 'nagad':
+          return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px; flex-shrink:0;">
+            <rect width="48" height="48" rx="8" fill="#FFF7ED"/>
+            <path d="M14 34C11 28 12 18 22 12C26 9 31 8 28 14C25 20 20 22 20 26C20 31 23 34 27 34C33 34 36 28 36 21C36 17 38 15 40 18C43 23 42 32 35 37C30 41 19 42 14 34Z" fill="#F7941D"/>
+            <path d="M22 26C22 23 24 19 27 16C28 15 29 17 28 19C26 22 25 24 26 26C27 28 29 29 31 28C32 29 30 31 28 31C25 31 22 29 22 26Z" fill="#ED1C24"/>
+          </svg>`;
+
+        case 'rocket':
+          return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px; flex-shrink:0;">
+            <rect width="48" height="48" rx="8" fill="#FDF2F8"/>
+            <path d="M16 32C14.5 30.5 14 27 15 25L23 17C26 14 30 13 33 13C33 16 32 20 29 23L21 31C19 32 17.5 33.5 16 32Z" fill="#8C3494"/>
+            <path d="M15 25L12 27L14 30L16 32L19 34L21 31" fill="#701A75"/>
+            <path d="M13 33L10 38L15 35" fill="#EF4444"/>
+            <circle cx="27" cy="19" r="2" fill="#FFFFFF"/>
+          </svg>`;
+
+        case 'cash':
+          return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px; flex-shrink:0;">
+            <rect width="48" height="48" rx="8" fill="#ECFDF5"/>
+            <rect x="10" y="15" width="28" height="18" rx="3" stroke="#059669" stroke-width="2.5" fill="#D1FAE5"/>
+            <circle cx="24" cy="24" r="4" stroke="#059669" stroke-width="2"/>
+            <path d="M14 19V19.01M34 29V29.01" stroke="#059669" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>`;
+
+        case 'card':
+          return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px; flex-shrink:0;">
+            <rect width="48" height="48" rx="8" fill="#EEF2FF"/>
+            <rect x="10" y="15" width="28" height="18" rx="3" fill="#4338CA"/>
+            <rect x="10" y="20" width="28" height="4" fill="#312E81"/>
+            <rect x="14" y="27" width="5" height="3" rx="1" fill="#FBBF24"/>
+            <line x1="22" y1="28" x2="33" y2="28" stroke="#A5B4FC" stroke-width="2" stroke-linecap="round"/>
+          </svg>`;
+
+        case 'bank':
+          return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px; flex-shrink:0;">
+            <rect width="48" height="48" rx="8" fill="#EFF6FF"/>
+            <path d="M12 36H36M12 21H36M14 17L24 11L34 17H14ZM16 21V33M21 21V33M27 21V33M32 21V33" stroke="#1E40AF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="35" cy="33" r="6" fill="#2563EB"/>
+            <path d="M33 33H37M35 31L37 33L35 35" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>`;
+
+        case 'mobile':
+          return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px; flex-shrink:0;">
+            <rect width="48" height="48" rx="8" fill="#F0FDF4"/>
+            <rect x="15" y="10" width="18" height="28" rx="3" stroke="#16a34a" stroke-width="2.5" fill="#DCFCE7"/>
+            <line x1="21" y1="14" x2="27" y2="14" stroke="#16a34a" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="24" cy="33" r="2" fill="#16a34a"/>
+          </svg>`;
+
+        case 'qr':
+          return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px; flex-shrink:0;">
+            <rect width="48" height="48" rx="8" fill="#F8FAFC"/>
+            <rect x="12" y="12" width="10" height="10" rx="1.5" stroke="#0f172a" stroke-width="2" fill="#e2e8f0"/>
+            <rect x="26" y="12" width="10" height="10" rx="1.5" stroke="#0f172a" stroke-width="2" fill="#e2e8f0"/>
+            <rect x="12" y="26" width="10" height="10" rx="1.5" stroke="#0f172a" stroke-width="2" fill="#e2e8f0"/>
+            <rect x="15" y="15" width="4" height="4" fill="#0f172a"/>
+            <rect x="29" y="15" width="4" height="4" fill="#0f172a"/>
+            <rect x="15" y="29" width="4" height="4" fill="#0f172a"/>
+            <rect x="26" y="26" width="4" height="4" fill="#0f172a"/>
+            <rect x="32" y="32" width="4" height="4" fill="#0f172a"/>
+          </svg>`;
+
+        case 'pos':
+          return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px; flex-shrink:0;">
+            <rect width="48" height="48" rx="8" fill="#F1F5F9"/>
+            <rect x="14" y="10" width="20" height="28" rx="3" stroke="#334155" stroke-width="2.5" fill="#FFFFFF"/>
+            <rect x="17" y="14" width="14" height="8" rx="1" fill="#0d9488"/>
+            <circle cx="18" cy="27" r="1.2" fill="#64748b"/><circle cx="24" cy="27" r="1.2" fill="#64748b"/><circle cx="30" cy="27" r="1.2" fill="#64748b"/>
+            <circle cx="18" cy="32" r="1.2" fill="#64748b"/><circle cx="24" cy="32" r="1.2" fill="#64748b"/><circle cx="30" cy="32" r="1.2" fill="#64748b"/>
+          </svg>`;
+
+        case 'coin':
+          return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px; flex-shrink:0;">
+            <rect width="48" height="48" rx="8" fill="#FEF3C7"/>
+            <circle cx="24" cy="24" r="14" stroke="#D97706" stroke-width="2.5" fill="#FDE68A"/>
+            <circle cx="24" cy="24" r="10" stroke="#B45309" stroke-width="1.5" stroke-dasharray="2 2"/>
+            <text x="24" y="28" font-size="13" font-weight="bold" fill="#B45309" text-anchor="middle" font-family="sans-serif">৳</text>
+          </svg>`;
+
+        case 'shield':
+          return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px; flex-shrink:0;">
+            <rect width="48" height="48" rx="8" fill="#F0FDF4"/>
+            <path d="M24 10L35 15V23C35 30 29 36 24 38C19 36 13 30 13 23V15L24 10Z" fill="#DCFCE7" stroke="#16A34A" stroke-width="2.5"/>
+            <path d="M20 24L23 27L29 20" stroke="#15803D" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>`;
+
+        case 'check':
+          return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px; flex-shrink:0;">
+            <rect width="48" height="48" rx="8" fill="#F5F3FF"/>
+            <rect x="10" y="16" width="28" height="16" rx="2" stroke="#7C3AED" stroke-width="2" fill="#FFFFFF"/>
+            <line x1="14" y1="21" x2="26" y2="21" stroke="#7C3AED" stroke-width="2"/>
+            <line x1="14" y1="26" x2="22" y2="26" stroke="#DDD6FE" stroke-width="2"/>
+            <line x1="28" y1="26" x2="34" y2="26" stroke="#7C3AED" stroke-width="1.5"/>
+          </svg>`;
+
+        case 'wallet':
+        default:
+          return `<svg viewBox="0 0 48 48" width="${s}" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg" style="border-radius:6px; flex-shrink:0;">
+            <rect width="48" height="48" rx="8" fill="#F1F5F9"/>
+            <rect x="11" y="14" width="26" height="20" rx="4" stroke="#475569" stroke-width="2.5" fill="#FFFFFF"/>
+            <path d="M28 24H35V28H28C26.8954 24 26.8954 28 28 24Z" fill="#CBD5E1" stroke="#475569" stroke-width="2"/>
+            <circle cx="30.5" cy="26" r="1.5" fill="#0F172A"/>
+            <path d="M11 19H37" stroke="#475569" stroke-width="2"/>
+          </svg>`;
+      }
+    },
+
+    // Payment method name -> which preset icon to draw. Works purely from the
+    // name (no backend list needed); unknown names get the generic wallet.
+    getPaymentMethodIcon(method, size = 28) {
+      const m = String(method || '').toLowerCase().trim();
+      const preset = { 'cash': 'cash', 'card': 'card', 'bkash': 'bkash', 'nagad': 'nagad',
+                       'rocket': 'rocket', 'bank transfer': 'bank', 'bank': 'bank', 'other': 'wallet' }[m] || 'wallet';
+      return this.renderPresetIcon(preset, size);
+    },
+
     /* ── Customer labels ──────────────────────────── */
     customerLabels: ['Regular', 'VIP', 'Elite', 'Wholesale', 'Premium', 'New'],
 
