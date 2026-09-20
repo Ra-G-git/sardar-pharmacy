@@ -827,11 +827,15 @@
         row.querySelector('.input-price').onchange = (e) => {
           let val = parseFloat(e.target.value) || 0;
           if (val < 0) val = 0;
+          // Remember the catalog price this line started with (once), so at
+          // checkout we can tell a real hand-edit from a price that was never touched.
+          if (item.baseStripPrice === undefined) item.baseStripPrice = item.stripPrice ?? item.unitPrice;
           item.unitPrice = val;
           // Keep stripPrice in sync so the Strip/Piece toggle still computes
           // correctly after a manual price edit.
           const unitSize = parseFloat(item.unitSize) || 1;
           item.stripPrice = item.byPiece ? val * unitSize : val;
+          item.priceEdited = Math.abs(item.stripPrice - item.baseStripPrice) > 0.004;
           // Re-render and recalculate without clearing input focus if possible,
           // but calling renderCart() is simple and correct
           this.renderCart();
@@ -1121,24 +1125,34 @@
       if (result.success) {
         H.showToast(`Order ${invoiceId} placed successfully!`);
 
-        // If a price was hand-edited in the cart, persist it as this
-        // medicine's new standing price — not just a one-off for this sale.
-        // item.stripPrice already reflects any manual edit (kept in sync by
-        // the price-input handler and the Strip/Piece toggle), so this is
-        // just "save whatever price ended up being charged."
-        for (const item of this.cart) {
-          if (!item.productId) continue;
-          try {
-            await fetch(`${window.POS.API_BASE}/api/products/${item.productId}`, {
-              method: 'PUT',
-              headers: S.getHeaders(),
-              body: JSON.stringify({ price: item.stripPrice ?? item.unitPrice })
-            });
-          } catch (err) {
-            console.error('Price sync failed for', item.productId, err);
+        // The sale above is already charged at whatever price is in the cart.
+        // Separately, if an admin/manager hand-edited a price, also save it as
+        // that medicine's new standing catalog price. Only edited lines are
+        // sent (not every item in every sale), cashiers' edits stay one-off
+        // (the server only lets admin/manager change catalog prices), and the
+        // result is reported instead of failing silently.
+        const me = S.getCurrentUser();
+        if (me && ['admin', 'manager'].includes(me.role)) {
+          const edited = this.cart.filter(i => i.productId && !i.variationName && i.priceEdited);
+          if (edited.length) {
+            const results = await Promise.allSettled(edited.map(async (i) => {
+              const res = await fetch(`${window.POS.API_BASE}/api/products/${i.productId}`, {
+                method: 'PUT',
+                headers: S.getHeaders(),
+                body: JSON.stringify({ price: i.stripPrice ?? i.unitPrice })
+              });
+              if (!res.ok) throw new Error('HTTP ' + res.status);
+            }));
+            const failed = results.filter(r => r.status === 'rejected');
+            failed.forEach(f => console.error('Price sync failed:', f.reason));
+            if (failed.length) {
+              H.showToast(`Order placed, but ${failed.length} catalog price update(s) failed`, 'warning');
+            } else {
+              H.showToast(`Catalog price updated for ${edited.length} item(s)`);
+            }
+            S._productCatalogPromise = null; // catalog is now stale, drop the cache
           }
         }
-        S._productCatalogPromise = null; // catalog is now stale, drop the cache
 
         if (await H.confirm('Would you like to print the receipt?')) {
           H.printOrder(order, this.cart, orderPaymentsList);
