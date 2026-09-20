@@ -6,6 +6,10 @@
 (function () {
   window.POS = window.POS || {};
   window.POS.BASE = '/pos';
+  // The API lives on Render, NOT on this (Vercel) origin. Every fetch to the
+  // backend must use this — `window.location.origin + '/api/...'` points at
+  // Vercel's old serverless function instead.
+  window.POS.API_BASE = 'https://sardar-pharmacy.onrender.com';
   window.POS.routePath = function () {
     var p = window.location.pathname;
     return p.startsWith(window.POS.BASE) ? (p.slice(window.POS.BASE.length) || '/') : p;

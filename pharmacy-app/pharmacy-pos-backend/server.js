@@ -5,9 +5,14 @@ const nodemailer = require('nodemailer');
 const config = require('./config');
 const products = require('./productsFirestore');
 const pos = require('./posFirestore');
+const auth = require('./auth');
 
 const app = express();
 const PORT = config.port;
+
+// Render (and Vercel) sit behind a proxy. Without this, req.ip is the proxy's
+// address (breaking the login rate limiter) and req.protocol is always 'http'.
+app.set('trust proxy', 1);
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -28,28 +33,34 @@ app.get('/pos*', (req, res) => {
 // static assets (Vercel serves those directly, faster) — it only matters
 // for local `node server.js` testing.
 
-// ── Authentication Middleware ────────────────────
-// For this standalone setup, we will pass active user object as header 'x-user-role' and 'x-user-name' for validation
-const verifyRole = (roles) => {
-  return (req, res, next) => {
-    const userRole = req.headers['x-user-role'];
-    if (!userRole) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-    if (!roles.includes(userRole)) {
-      return res.status(403).json({ error: 'Permission denied for this task' });
-    }
-    next();
-  };
-};
+// ── Authentication ────────────────────────────────
+// Default-deny: every /api/* request needs a valid signed token, except the
+// four login/reset endpoints listed in auth.js. verifyRole() then checks the
+// role that is INSIDE the token (req.user), never a client-supplied header.
+app.use('/api', auth.authenticate);
+const verifyRole = auth.verifyRole;
 
 // ── Auth ──────────────────────────────────────────
+const loginLimiter = auth.makeLimiter(10, 15 * 60 * 1000);   // 10 failures / 15 min
+const forgotLimiter = auth.makeLimiter(5, 15 * 60 * 1000);   // 5 requests / 15 min
+
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password } = req.body || {};
+    if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+    const key = `${req.ip}|${username.toLowerCase().trim()}`;
+    if (loginLimiter.isBlocked(key)) {
+      return res.status(429).json({ error: 'Too many failed attempts. Please try again in 15 minutes.' });
+    }
     const user = await pos.login(username, password);
-    if (!user) return res.status(400).json({ error: 'Invalid username/email or password' });
-    res.json({ success: true, user });
+    if (!user) {
+      loginLimiter.hit(key);
+      return res.status(400).json({ error: 'Invalid username/email or password' });
+    }
+    loginLimiter.clear(key);
+    res.json({ success: true, user, token: auth.signToken(user) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -65,7 +76,7 @@ app.post('/api/auth/google-login', async (req, res) => {
     if (!idToken) return res.status(400).json({ error: 'idToken is required' });
     const user = await pos.googleLogin(idToken);
     if (!user) return res.status(403).json({ error: 'No staff account is linked to this Google account. Ask an admin to add your Gmail in the Users tab.' });
-    res.json({ success: true, user });
+    res.json({ success: true, user, token: auth.signToken(user) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -73,7 +84,7 @@ app.post('/api/auth/google-login', async (req, res) => {
 
 app.put('/api/auth/change-password', async (req, res) => {
   try {
-    const userId = req.headers['x-user-id'];
+    const userId = req.user.id; // from the verified token, not a client header
     const { oldPassword, newPassword } = req.body;
     if (!userId) return res.status(401).json({ error: 'Authentication required' });
     if (!oldPassword || !newPassword) return res.status(400).json({ error: 'Missing old or new password keys' });
@@ -98,13 +109,18 @@ const createMailTransporter = () => {
 
 app.post('/api/auth/forgot-password', async (req, res) => {
   try {
-    const { identity } = req.body;
-    if (!identity) return res.status(400).json({ error: 'Username or email address is required' });
+    const { identity } = req.body || {};
+    if (typeof identity !== 'string' || !identity) return res.status(400).json({ error: 'Username or email address is required' });
+    if (forgotLimiter.isBlocked(req.ip)) return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+    forgotLimiter.hit(req.ip);
     const result = await pos.forgotPassword(identity);
     const genericMsg = { success: true, message: 'If a matching account exists, a password reset link has been sent.' };
     if (!result.found || !result.hasEmail) return res.json(genericMsg);
 
-    const resetLink = `${req.protocol}://${req.get('host')}/pos/login.html?token=${result.token}`;
+    // Fixed base URL — building this from the request's Host header would let an
+    // attacker point the emailed link at their own domain and steal the token.
+    const baseUrl = (process.env.POS_BASE_URL || 'https://sardar-pharmacy.vercel.app').replace(/\/+$/, '');
+    const resetLink = `${baseUrl}/pos/login.html?token=${result.token}`;
     const mailOptions = {
       from: process.env.SMTP_FROM || '"Pharmacy POS Support" <support@example.com>',
       to: result.email, subject: 'Password Recovery Link',
@@ -123,7 +139,11 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     console.log('\n=== PASSWORD RESET (no SMTP configured) ===');
     console.log('To:', result.email, '| Link:', resetLink);
     console.log('============================================\n');
-    res.json({ ...genericMsg, _debugLink: resetLink });
+    // The link goes to the server log only. It is returned in the response ONLY if
+    // EXPOSE_RESET_LINK=1 is set (local testing) — otherwise anyone could request
+    // a reset for 'admin' and receive the link, i.e. take over the account.
+    if (process.env.EXPOSE_RESET_LINK === '1') return res.json({ ...genericMsg, _debugLink: resetLink });
+    res.json(genericMsg);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

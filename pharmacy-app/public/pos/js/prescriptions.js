@@ -97,7 +97,7 @@
       container.querySelectorAll('button[data-action]').forEach(btn => {
         btn.onclick = async () => {
           try {
-            await fetch(`${window.location.origin}/api/prescriptions/${btn.dataset.id}`, {
+            await fetch(`${window.POS.API_BASE}/api/prescriptions/${btn.dataset.id}`, {
               method: 'PUT',
               headers: POS.Store.getHeaders(),
               body: JSON.stringify({ status: btn.dataset.action })

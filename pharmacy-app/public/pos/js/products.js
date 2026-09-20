@@ -166,7 +166,7 @@
       }
 
       document.getElementById('btn-export-csv').onclick = async () => {
-        const res = await fetch(`${window.location.origin}/api/products?includeTrashed=true`, {
+        const res = await fetch(`${window.POS.API_BASE}/api/products?includeTrashed=true`, {
           headers: S.getHeaders()
         });
         const list = await res.json();
@@ -299,7 +299,7 @@
               return;
             }
 
-            const res = await fetch(`${window.location.origin}/api/products/bulk`, {
+            const res = await fetch(`${window.POS.API_BASE}/api/products/bulk`, {
               method: 'POST',
               headers: S.getHeaders(),
               body: JSON.stringify(productsToImport)
@@ -379,23 +379,23 @@
           for (const pid of this.selectedProductIds) {
             try {
               if (action === 'publish' || action === 'draft') {
-                const pRes = await fetch(`${window.location.origin}/api/products?includeTrashed=true`, { headers: S.getHeaders() });
+                const pRes = await fetch(`${window.POS.API_BASE}/api/products?includeTrashed=true`, { headers: S.getHeaders() });
                 const list = await pRes.json();
                 const product = list.find(prod => prod.id === pid);
                 if (product) {
                   product.status = action === 'publish' ? 'Publish' : 'Draft';
-                  await fetch(`${window.location.origin}/api/products/${pid}`, {
+                  await fetch(`${window.POS.API_BASE}/api/products/${pid}`, {
                     method: 'PUT',
                     headers: S.getHeaders(),
                     body: JSON.stringify(product)
                   });
                 }
               } else if (action === 'delete') {
-                await fetch(`${window.location.origin}/api/products/${pid}`, { method: 'DELETE', headers: S.getHeaders() });
+                await fetch(`${window.POS.API_BASE}/api/products/${pid}`, { method: 'DELETE', headers: S.getHeaders() });
               } else if (action === 'delete_perm') {
-                await fetch(`${window.location.origin}/api/products/${pid}?permanent=true`, { method: 'DELETE', headers: S.getHeaders() });
+                await fetch(`${window.POS.API_BASE}/api/products/${pid}?permanent=true`, { method: 'DELETE', headers: S.getHeaders() });
               } else if (action === 'restore') {
-                await fetch(`${window.location.origin}/api/products/${pid}/restore`, { method: 'POST', headers: S.getHeaders() });
+                await fetch(`${window.POS.API_BASE}/api/products/${pid}/restore`, { method: 'POST', headers: S.getHeaders() });
               }
             } catch (err) {
               console.error('Bulk error:', err);
@@ -596,7 +596,7 @@
         input.disabled = true;
 
         try {
-          const res = await fetch(`${window.location.origin}/api/products/resolve-scan?query=${encodeURIComponent(query)}`, {
+          const res = await fetch(`${window.POS.API_BASE}/api/products/resolve-scan?query=${encodeURIComponent(query)}`, {
             headers: S.getHeaders()
           });
           if (!res.ok) {
@@ -683,7 +683,7 @@
             qty: i.qty
           }));
 
-          const res = await fetch(`${window.location.origin}/api/products/bulk-stock-update`, {
+          const res = await fetch(`${window.POS.API_BASE}/api/products/bulk-stock-update`, {
             method: 'POST',
             headers: S.getHeaders(),
             body: JSON.stringify(updates)
@@ -712,7 +712,7 @@
       const S = POS.Store;
       const H = POS.Helpers;
 
-      const res = await fetch(`${window.location.origin}/api/products?includeTrashed=true`, {
+      const res = await fetch(`${window.POS.API_BASE}/api/products?includeTrashed=true`, {
         headers: S.getHeaders()
       });
       const allProducts = await res.json();
@@ -960,7 +960,7 @@
         btn.onclick = async () => {
           const p = allProducts.find(prod => prod.id === btn.dataset.id);
           if (await H.confirm(`Are you sure you want to move "${p.name}" to Trash? It will stay in Trash for 30 days.`)) {
-            await fetch(`${window.location.origin}/api/products/${p.id}`, {
+            await fetch(`${window.POS.API_BASE}/api/products/${p.id}`, {
               method: 'DELETE',
               headers: S.getHeaders()
             });
@@ -973,7 +973,7 @@
       document.querySelectorAll('.btn-restore-opt').forEach(btn => {
         btn.onclick = async () => {
           const p = allProducts.find(prod => prod.id === btn.dataset.id);
-          await fetch(`${window.location.origin}/api/products/${p.id}/restore`, {
+          await fetch(`${window.POS.API_BASE}/api/products/${p.id}/restore`, {
             method: 'POST',
             headers: S.getHeaders()
           });
@@ -986,7 +986,7 @@
         btn.onclick = async () => {
           const p = allProducts.find(prod => prod.id === btn.dataset.id);
           if (await H.confirm(`⚠️ WARNING: Are you sure you want to permanently delete "${p.name}"? This action CANNOT be undone.`)) {
-            await fetch(`${window.location.origin}/api/products/${p.id}?permanent=true`, {
+            await fetch(`${window.POS.API_BASE}/api/products/${p.id}?permanent=true`, {
               method: 'DELETE',
               headers: S.getHeaders()
             });
@@ -1312,7 +1312,7 @@
 
         try {
           const method = isEdit ? 'PUT' : 'POST';
-          const url = isEdit ? `${window.location.origin}/api/products/${p.id}` : `${window.location.origin}/api/products`;
+          const url = isEdit ? `${window.POS.API_BASE}/api/products/${p.id}` : `${window.POS.API_BASE}/api/products`;
           const res = await fetch(url, {
             method,
             headers: S.getHeaders(),

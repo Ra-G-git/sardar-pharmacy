@@ -471,7 +471,7 @@
       let paymentsList = localPayments;
       if (!paymentsList) {
         try {
-          const pRes = await fetch(`${window.location.origin}/api/payments`, {
+          const pRes = await fetch(`${window.POS.API_BASE}/api/payments`, {
             headers: S.getHeaders()
           });
           if (pRes.ok) {

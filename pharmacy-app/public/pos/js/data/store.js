@@ -4,7 +4,49 @@
   // Backend now runs on Render (not Vercel serverless), since Vercel's
   // serverless functions were hanging indefinitely on Firestore Admin SDK
   // reads. Replace with your actual Render URL once deployed.
-  const API_BASE = 'https://sardar-pharmacy.onrender.com';
+  const API_BASE = (window.POS && window.POS.API_BASE) || 'https://sardar-pharmacy.onrender.com';
+
+  // ── Auth token plumbing ────────────────────────────────────────────
+  // The server now requires `Authorization: Bearer <token>` on every /api
+  // call (except login/reset). Wrapping fetch once here means all ~40 call
+  // sites get it automatically — including ones that build their own
+  // headers — and an expired/invalid token sends the user back to login.
+  const TOKEN_KEY = 'pos_token';
+  const USER_KEY = 'pos_user';
+  const _fetch = window.fetch.bind(window);
+
+  function clearSessionAndGoToLogin() {
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    const base = (window.POS && window.POS.BASE) || '/pos';
+    window.location.href = base + '/login.html';
+  }
+
+  window.fetch = function (input, init) {
+    const url = typeof input === 'string' ? input : (input && input.url) || '';
+    if (!url.startsWith(API_BASE)) return _fetch(input, init);
+
+    const token = localStorage.getItem(TOKEN_KEY);
+    const opts = Object.assign({}, init);
+    const headers = new Headers(opts.headers || {});
+    if (token) headers.set('Authorization', 'Bearer ' + token);
+    opts.headers = headers;
+
+    return _fetch(input, opts).then((res) => {
+      const isAuthEndpoint = url.startsWith(API_BASE + '/api/auth/');
+      if (res.status === 401 && !isAuthEndpoint) clearSessionAndGoToLogin();
+      return res;
+    });
+  };
+
+  function tokenIsExpired(token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+      return !payload.exp || payload.exp * 1000 < Date.now();
+    } catch (e) {
+      return true;
+    }
+  }
 
   const Store = {
     init() {
@@ -13,7 +55,10 @@
 
     // Session helpers
     getCurrentUser() {
-      const userStr = localStorage.getItem('pos_user');
+      // No valid token = not logged in (covers old sessions from before tokens existed).
+      const token = localStorage.getItem(TOKEN_KEY);
+      if (!token || tokenIsExpired(token)) return null;
+      const userStr = localStorage.getItem(USER_KEY);
       if (!userStr) return null;
       try {
         return JSON.parse(userStr);
@@ -23,14 +68,9 @@
     },
 
     getHeaders() {
-      const user = this.getCurrentUser();
-      const headers = { 'Content-Type': 'application/json' };
-      if (user) {
-        headers['x-user-role'] = user.role;
-        headers['x-user-name'] = user.name;
-        headers['x-user-id'] = user.id;
-      }
-      return headers;
+      // Identity is proven by the Authorization token the fetch wrapper adds —
+      // the server ignores any x-user-* headers, so we no longer send them.
+      return { 'Content-Type': 'application/json' };
     },
 
     async changePassword(oldPassword, newPassword) {
@@ -63,8 +103,9 @@
           throw new Error(errData.error || 'Invalid credentials');
         }
         const data = await res.json();
-        if (data.success && data.user) {
-          localStorage.setItem('pos_user', JSON.stringify(data.user));
+        if (data.success && data.user && data.token) {
+          localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+          localStorage.setItem(TOKEN_KEY, data.token);
           return { success: true, user: data.user };
         }
         return { success: false, error: 'Login failed' };
@@ -75,7 +116,8 @@
     },
 
     logout() {
-      localStorage.removeItem('pos_user');
+      localStorage.removeItem(USER_KEY);
+      localStorage.removeItem(TOKEN_KEY);
       window.location.href = 'login.html';
     },
 

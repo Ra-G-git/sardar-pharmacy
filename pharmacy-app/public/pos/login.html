@@ -285,6 +285,8 @@
 
     if (!resetToken) {
       // Already logged into the POS from a prior session — skip straight in.
+      // Only a session that has BOTH a user and a token counts (older sessions had no token).
+      if (!localStorage.getItem('pos_token')) localStorage.removeItem('pos_user');
       const activeUser = localStorage.getItem('pos_user');
       if (activeUser) {
         try {
@@ -317,6 +319,7 @@
             const data = await res.json();
             if (res.ok && data.success && data.user) {
               localStorage.setItem('pos_user', JSON.stringify(data.user));
+              localStorage.setItem('pos_token', data.token);
               window.location.href = '/pos' + (data.user.role === 'cashier' ? '/new-order' : '/dashboard');
             } else {
               gsDeniedEmail.textContent = fbUser.email || '';
@@ -381,6 +384,7 @@
         if (!res.ok) throw new Error(data.error || 'Google sign-in failed');
 
         localStorage.setItem('pos_user', JSON.stringify(data.user));
+              localStorage.setItem('pos_token', data.token);
         window.location.href = '/pos' + (data.user.role === 'cashier' ? '/new-order' : '/dashboard');
       } catch (err) {
         errorDiv.innerText = '⚠️ ' + err.message;
@@ -415,6 +419,7 @@
 
         if (data.success && data.user) {
           localStorage.setItem('pos_user', JSON.stringify(data.user));
+              localStorage.setItem('pos_token', data.token);
           window.location.href = '/pos' + (data.user.role === 'cashier' ? '/new-order' : '/dashboard');
         } else {
           throw new Error('Authentication failed');

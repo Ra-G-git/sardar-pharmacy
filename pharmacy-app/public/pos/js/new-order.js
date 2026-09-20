@@ -433,7 +433,7 @@
           // full ~20k-item catalog client-side.
           let matchedItem = null;
           try {
-            const res = await fetch(`${window.location.origin}/api/products/resolve-scan?query=${encodeURIComponent(query)}`, { headers: S.getHeaders() });
+            const res = await fetch(`${window.POS.API_BASE}/api/products/resolve-scan?query=${encodeURIComponent(query)}`, { headers: S.getHeaders() });
             const data = await res.json();
             if (data.success && data.item) {
               const p = data.item;
@@ -1129,7 +1129,7 @@
         for (const item of this.cart) {
           if (!item.productId) continue;
           try {
-            await fetch(`${window.location.origin}/api/products/${item.productId}`, {
+            await fetch(`${window.POS.API_BASE}/api/products/${item.productId}`, {
               method: 'PUT',
               headers: S.getHeaders(),
               body: JSON.stringify({ price: item.stripPrice ?? item.unitPrice })

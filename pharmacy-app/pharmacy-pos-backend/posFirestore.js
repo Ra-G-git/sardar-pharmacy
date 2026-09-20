@@ -56,6 +56,12 @@ async function googleLogin(idToken) {
   }
   const email = decoded.email;
   if (!email) return null;
+  // The customer site shares this Firebase project and lets people sign up with
+  // ANY email (unverified). Without these two checks, someone could register
+  // staff@example.com there, and this would treat their token as that staff
+  // member's Google login. Require a verified Google-provider identity.
+  if (decoded.email_verified !== true) return null;
+  if (!decoded.firebase || decoded.firebase.sign_in_provider !== 'google.com') return null;
 
   await ensureDefaultAdmin();
   const snap = await db.collection(USERS).where('email', '==', email.toLowerCase().trim()).limit(1).get();
