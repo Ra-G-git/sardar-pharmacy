@@ -375,7 +375,13 @@ app.get('/api/payments', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     const orders = await pos.listOrders();
-    const payments = orders.flatMap(o => (o.payments || []).map((p, idx) => ({ id: `${o.id}-pay-${idx}`, orderId: o.id, ...p })));
+    // orderId MUST come from the parent order doc. Each stored payment also carries
+    // an `orderId` — but that is the id the browser invented when the sale was rung
+    // up, not the Firestore document id. Spreading `...p` last let that stale id
+    // win, so no payment ever matched its order and every screen that joins
+    // payments to orders (dashboard, reports, sales list, receipts, edit order)
+    // showed ৳0.
+    const payments = orders.flatMap(o => (o.payments || []).map((p, idx) => ({ ...p, id: `${o.id}-pay-${idx}`, orderId: o.id })));
     res.json(payments);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
