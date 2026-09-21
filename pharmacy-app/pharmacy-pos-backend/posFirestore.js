@@ -47,28 +47,34 @@ async function ensureDefaultAdmin() {
 // admin just by POSTing {email: "admin@..."} — verifying the token closes
 // that.
 async function googleLogin(idToken) {
-  if (!idToken) return null;
+  // Returns { user } on success, or { reason, email } saying exactly why not, so
+  // the login page can tell "not verified" apart from "no staff account" instead
+  // of showing one message for everything.
+  if (!idToken) return { reason: 'invalid_token' };
   let decoded;
   try {
     decoded = await admin.auth().verifyIdToken(idToken);
   } catch (err) {
-    return null; // invalid/expired token
+    return { reason: 'invalid_token' }; // invalid/expired token
   }
   const email = decoded.email;
-  if (!email) return null;
-  // The customer site shares this Firebase project and lets people sign up with
-  // ANY email (unverified). Without these two checks, someone could register
-  // staff@example.com there, and this would treat their token as that staff
-  // member's Google login. Require a verified Google-provider identity.
-  if (decoded.email_verified !== true) return null;
-  if (!decoded.firebase || decoded.firebase.sign_in_provider !== 'google.com') return null;
+  if (!email) return { reason: 'no_email' };
+  // The customer site shares this Firebase project and anyone can create an account
+  // there with ANY email address. The email must therefore be VERIFIED (the person
+  // proved they own the mailbox) — otherwise someone could register a staff
+  // member's address and be treated as them. Google accounts and email+password
+  // accounts are both fine once verified (the customer site itself only lets
+  // email+password users in after verification); other sign-in kinds are not.
+  if (decoded.email_verified !== true) return { reason: 'not_verified', email };
+  const provider = decoded.firebase && decoded.firebase.sign_in_provider;
+  if (provider !== 'google.com' && provider !== 'password') return { reason: 'provider_not_allowed', email };
 
   await ensureDefaultAdmin();
   const snap = await db.collection(USERS).where('email', '==', email.toLowerCase().trim()).limit(1).get();
-  if (snap.empty) return null;
+  if (snap.empty) return { reason: 'no_account', email };
   const doc = snap.docs[0];
   const user = doc.data();
-  return { id: doc.id, username: user.username, name: user.name, role: user.role, email: user.email };
+  return { user: { id: doc.id, username: user.username, name: user.name, role: user.role, email: user.email } };
 }
 
 async function login(username, password) {

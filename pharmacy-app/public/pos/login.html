@@ -146,7 +146,7 @@
         <!-- Checking Firebase auth state (brief, on every load) -->
         <div id="gs-checking" style="text-align:center; padding:30px 0;">
           <div style="width:36px; height:36px; border:3px solid #e2e8f0; border-top-color:var(--primary); border-radius:50%; margin:0 auto 14px; animation:spin 0.8s linear infinite;"></div>
-          <p style="color:#94a3b8; font-size:13px;">Checking your account…</p>
+          <p id="gs-checking-text" style="color:#94a3b8; font-size:13px;">Checking your account…</p>
         </div>
         <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 
@@ -156,7 +156,7 @@
           <p style="font-weight:700; color:#1e293b; margin:0 0 4px;">Access Restricted</p>
           <p style="font-size:13px; color:#64748b; margin:0 0 4px;">You're signed in as</p>
           <p id="gs-denied-email" style="font-size:13px; font-weight:700; color:#1e293b; margin:0 0 14px; word-break:break-all;"></p>
-          <p style="font-size:12px; color:#94a3b8; margin:0 0 18px;">This account isn't set up for POS access. Ask an admin to add your Gmail in the Users tab, or sign in with a different Google account.</p>
+          <p id="gs-denied-msg" style="font-size:12px; color:#94a3b8; margin:0 0 18px;">This account isn't set up for POS access. Ask an admin to add your Gmail in the Users tab, or sign in with a different Google account.</p>
           <button type="button" id="btn-gs-signout" style="width:100%; padding:11px; border:2px solid #e2e8f0; border-radius:var(--radius-sm); background:white; font-size:13px; font-weight:700; color:#1e293b; cursor:pointer; font-family:'Inter',sans-serif;">Try a Different Google Account</button>
         </div>
 
@@ -273,8 +273,35 @@
     const gsChecking = document.getElementById('gs-checking');
     const gsDenied = document.getElementById('gs-denied');
     const gsDeniedEmail = document.getElementById('gs-denied-email');
+    const gsDeniedMsg = document.getElementById('gs-denied-msg');
+    const gsCheckingText = document.getElementById('gs-checking-text');
     const gsPrompt = document.getElementById('gs-prompt');
     const staffLoginForm = document.getElementById('staff-login-form');
+
+    // The server (Render's free tier) can be asleep for 30-60 seconds after sitting idle:
+    // the first request then fails or returns a 502/503 page. That is NOT the same as
+    // "this account isn't allowed", so retry those instead of reporting a refusal.
+    async function postGoogleLogin(idToken, onWaiting) {
+      const delays = [2000, 4000, 8000, 12000];
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const res = await fetch('https://sardar-pharmacy.onrender.com/api/auth/google-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken })
+          });
+          if (res.status < 500) {
+            const data = await res.json().catch(() => ({}));
+            return { res, data };
+          }
+        } catch (e) { /* network error: the server is probably still waking up */ }
+        if (attempt >= delays.length) {
+          throw new Error('The server is taking too long to wake up. Please try again in a minute.');
+        }
+        if (onWaiting) onWaiting();
+        await new Promise(r => setTimeout(r, delays[attempt]));
+      }
+    }
 
     function showState(state) {
       gsChecking.style.display = state === 'checking' ? 'block' : 'none';
@@ -324,23 +351,25 @@
           }
           try {
             const idToken = await fbUser.getIdToken();
-            const res = await fetch('https://sardar-pharmacy.onrender.com/api/auth/google-login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ idToken })
+            const { res, data } = await postGoogleLogin(idToken, () => {
+              gsCheckingText.textContent = 'Waking up the server… this can take up to a minute the first time.';
             });
-            const data = await res.json();
             if (res.ok && data.success && data.user) {
               localStorage.setItem('pos_user', JSON.stringify(data.user));
               localStorage.setItem('pos_token', data.token);
               window.location.href = '/pos' + (data.user.role === 'cashier' ? '/new-order' : '/dashboard');
             } else {
+              // A real refusal from the server: show its actual reason.
               gsDeniedEmail.textContent = fbUser.email || '';
+              if (data.error) gsDeniedMsg.textContent = data.error;
               showState('denied');
             }
           } catch (err) {
-            gsDeniedEmail.textContent = fbUser.email || '';
-            showState('denied');
+            // The server never answered — that says nothing about this account, so
+            // don't claim access is restricted. Offer the normal sign-in instead.
+            showState('prompt');
+            errorDiv.innerText = '⚠️ ' + err.message;
+            errorDiv.style.display = 'block';
           }
         });
       }
@@ -388,12 +417,9 @@
         const result = await firebase.auth().signInWithPopup(provider);
         const idToken = await result.user.getIdToken();
 
-        const res = await fetch('https://sardar-pharmacy.onrender.com/api/auth/google-login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken })
+        const { res, data } = await postGoogleLogin(idToken, () => {
+          googleBtn.innerText = 'Waking up the server…';
         });
-        const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Google sign-in failed');
 
         localStorage.setItem('pos_user', JSON.stringify(data.user));

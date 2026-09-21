@@ -74,9 +74,20 @@ app.post('/api/auth/google-login', async (req, res) => {
   try {
     const { idToken } = req.body;
     if (!idToken) return res.status(400).json({ error: 'idToken is required' });
-    const user = await pos.googleLogin(idToken);
-    if (!user) return res.status(403).json({ error: 'No staff account is linked to this Google account. Ask an admin to add your Gmail in the Users tab.' });
-    res.json({ success: true, user, token: auth.signToken(user) });
+    const result = await pos.googleLogin(idToken);
+    if (!result.user) {
+      const who = result.email || 'this account';
+      const reasons = {
+        invalid_token: [401, 'Your sign-in has expired. Please sign in again.'],
+        no_email: [403, "This account has no email address, so it can't be matched to a staff account."],
+        not_verified: [403, `The email address ${who} hasn't been verified yet. Open the verification email we sent you, or sign in with Google instead.`],
+        provider_not_allowed: [403, "This kind of sign-in isn't allowed for staff. Use Google, or your staff username and password."],
+        no_account: [403, `No staff account is linked to ${who}. Ask an admin to add this email in the Users tab.`],
+      };
+      const [status, error] = reasons[result.reason] || [403, 'Sign-in was not accepted.'];
+      return res.status(status).json({ error, reason: result.reason });
+    }
+    res.json({ success: true, user: result.user, token: auth.signToken(result.user) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
