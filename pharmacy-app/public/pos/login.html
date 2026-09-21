@@ -286,7 +286,20 @@
     if (!resetToken) {
       // Already logged into the POS from a prior session — skip straight in.
       // Only a session that has BOTH a user and a token counts (older sessions had no token).
-      if (!localStorage.getItem('pos_token')) localStorage.removeItem('pos_user');
+      // A session only counts if the token is still valid. (Checking merely that a
+      // token exists caused a redirect loop once it expired: the app said "logged
+      // out", this page said "logged in", and they bounced between each other.)
+      const tokenStillValid = (t) => {
+        try {
+          const p = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+          return !!p.exp && p.exp * 1000 > Date.now();
+        } catch (e) { return false; }
+      };
+      const savedToken = localStorage.getItem('pos_token');
+      if (!savedToken || !tokenStillValid(savedToken)) {
+        localStorage.removeItem('pos_token');
+        localStorage.removeItem('pos_user');
+      }
       const activeUser = localStorage.getItem('pos_user');
       if (activeUser) {
         try {

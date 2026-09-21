@@ -118,8 +118,8 @@
         const list = await this.getFilteredOrders(fromDate, toDate, searchQuery);
         const csvData = list.map(o => ({
           'Invoice ID': o.invoiceId,
-          'Customer Name': o.customerName,
-          'Customer Phone': o.customerPhone,
+          'Customer Name': o.customerName || o.name || 'Walk-in Customer',
+          'Customer Phone': o.customerPhone || o.phone || 'N/A',
           'Date': H.formatDateTime(o.date),
           'Subtotal': o.subtotal,
           'Discount Type': o.discountType,
@@ -147,9 +147,9 @@
       return await S.query('orders', o => {
         // Search filter
         if (search) {
-          const invMatch = o.invoiceId.toLowerCase().includes(search);
-          const custNameMatch = o.customerName.toLowerCase().includes(search);
-          const custPhoneMatch = o.customerPhone.includes(search);
+          const invMatch = String(o.invoiceId || '').toLowerCase().includes(search);
+          const custNameMatch = String(o.customerName || o.name || '').toLowerCase().includes(search);
+          const custPhoneMatch = String(o.customerPhone || o.phone || '').includes(search);
           if (!invMatch && !custNameMatch && !custPhoneMatch) return false;
         }
 
@@ -204,8 +204,8 @@
           <tr class="sales-row" data-id="${o.id}">
             <td style="font-weight:700;">${o.invoiceId}</td>
             <td>
-              <div style="font-weight:600;">${H.esc(o.customerName)}</div>
-              <div class="text-muted text-sm">${H.esc(o.customerPhone)}</div>
+              <div style="font-weight:600;">${H.esc(o.customerName || o.name || 'Walk-in Customer')}</div>
+              <div class="text-muted text-sm">${H.esc(o.customerPhone || o.phone || 'N/A')}</div>
             </td>
             <td>${H.formatDateTime(o.date)}</td>
             <td class="text-right">${H.formatCurrency(o.subtotal)}</td>
@@ -301,7 +301,7 @@
         const suffix = (p.lastFour || p.lastfour) ? ` (xxxx-${p.lastFour || p.lastfour})` : '';
         paymentsHtml += `
           <div class="flex justify-between text-sm" style="border-bottom:1px solid var(--border-light); padding:4px 0;">
-            <span class="text-muted">${p.method}${suffix}</span>
+            <span class="text-muted">${H.esc(p.method)}${suffix}</span>
             <span style="font-weight:600;">${H.formatCurrency(p.amount)}</span>
           </div>
         `;
@@ -317,8 +317,8 @@
             <div class="grid-2 mb-2">
               <div>
                 <h4 style="margin-bottom:4px;">Customer Info</h4>
-                <p><strong>Name:</strong> ${H.esc(order.customerName)}</p>
-                <p><strong>Phone:</strong> ${H.esc(order.customerPhone)}</p>
+                <p><strong>Name:</strong> ${H.esc(order.customerName || order.name || 'Walk-in Customer')}</p>
+                <p><strong>Phone:</strong> ${H.esc(order.customerPhone || order.phone || 'N/A')}</p>
               </div>
               <div class="text-right">
                 <h4 style="margin-bottom:4px;">Order Info</h4>

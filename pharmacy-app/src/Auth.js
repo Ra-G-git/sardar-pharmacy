@@ -8,6 +8,7 @@ import {
   GoogleAuthProvider,
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
+import logo from "./logo.svg";
 
 function Auth({ onClose }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -107,7 +108,7 @@ function Auth({ onClose }) {
     <div style={styles.overlay}>
       <div style={styles.box}>
         <div style={styles.header}>
-          <div style={styles.headerIcon}>💊</div>
+          <img src={logo} alt="Sardar Pharmacy" style={styles.headerLogo} />
           <h2 style={styles.title}>
             {isLogin ? "Welcome Back!" : "Create Account"}
           </h2>
@@ -240,8 +241,10 @@ const styles = {
     textAlign: "center",
     position: "relative",
   },
-  headerIcon: {
-    fontSize: "40px",
+  headerLogo: {
+    height: "64px",
+    width: "auto",
+    objectFit: "contain",
     marginBottom: "12px",
   },
   title: {

@@ -532,7 +532,7 @@
 
       // QR code linking to the pharmacy's site — generated as an image via a
       // public QR API (no extra library needed for a plain-script frontend).
-      const siteUrl = settings.store_website || 'https://sardar-pharmacy-rkgz.vercel.app';
+      const siteUrl = settings.store_website || this.SITE_URL;
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=90x90&margin=0&data=${encodeURIComponent(siteUrl)}`;
 
       // WhatsApp share — same message shape/BD phone formatting as the
@@ -567,6 +567,12 @@ _Thank you for shopping with us!_`;
         waPhone = '';
       }
       const whatsappUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(waMessage)}`;
+
+      // Thermal receipts use the same layout as the customer site's Admin → Orders
+      // "Print" receipt (see printStoreReceipt). The paper A4 invoice below is unchanged.
+      if (printType === 'receipt') {
+        return this.printStoreReceipt(order, rawItems, paymentsList, settings, whatsappUrl);
+      }
 
       // The print preview opens in a separate popup document — resolve a
       // relative logo path to an absolute URL so it actually loads there.
@@ -747,6 +753,314 @@ _Thank you for shopping with us!_`;
       }
 
       this.printHTML(printContent, `Invoice ${order.invoiceId}`, settings);
+    },
+
+    /* ── Storefront receipt ─────────────────────────────
+       Same layout, wording and CSS as printReceipt() in the customer site's
+       Receipt.js (the receipt behind Admin → Orders → Print), plus the shop
+       logo at the top and a QR code for the website at the bottom.
+       Differences from the site's version, all because POS orders carry more
+       data: "Order ID" is the invoice number (what the Sales List shows),
+       "Payment" lists what was actually paid (e.g. "Cash + bKash"), item
+       discounts / tax / paid-due lines appear only when they apply. */
+    SITE_URL: 'https://sardar-pharmacy.vercel.app',
+    // QR code for SITE_URL, pre-generated (nothing to fetch at print time, works
+    // offline). If the website address ever changes this must be regenerated.
+    _SITE_QR_MODULES: 29,
+    _SITE_QR_PATH: 'M0 0h7v1h-7zM9 0h2v1h-2zM13 0h1v1h-1zM16 0h2v1h-2zM19 0h1v1h-1zM22 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h2v1h-2zM11 1h1v1h-1zM14 1h4v1h-4zM19 1h2v1h-2zM22 1h1v1h-1zM28 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM12 2h3v1h-3zM16 2h1v1h-1zM19 2h2v1h-2zM22 2h1v1h-1zM24 2h3v1h-3zM28 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM10 3h1v1h-1zM12 3h4v1h-4zM19 3h1v1h-1zM22 3h1v1h-1zM24 3h3v1h-3zM28 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM8 4h1v1h-1zM12 4h1v1h-1zM14 4h1v1h-1zM17 4h3v1h-3zM22 4h1v1h-1zM24 4h3v1h-3zM28 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM10 5h1v1h-1zM12 5h2v1h-2zM18 5h3v1h-3zM22 5h1v1h-1zM28 5h1v1h-1zM0 6h7v1h-7zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM22 6h7v1h-7zM9 7h2v1h-2zM12 7h3v1h-3zM16 7h2v1h-2zM19 7h1v1h-1zM0 8h1v1h-1zM2 8h1v1h-1zM4 8h1v1h-1zM6 8h1v1h-1zM11 8h2v1h-2zM14 8h4v1h-4zM20 8h1v1h-1zM24 8h1v1h-1zM27 8h1v1h-1zM0 9h2v1h-2zM3 9h2v1h-2zM7 9h1v1h-1zM14 9h2v1h-2zM17 9h2v1h-2zM20 9h3v1h-3zM25 9h1v1h-1zM28 9h1v1h-1zM1 10h2v1h-2zM5 10h2v1h-2zM8 10h1v1h-1zM10 10h4v1h-4zM16 10h2v1h-2zM22 10h1v1h-1zM24 10h1v1h-1zM26 10h3v1h-3zM3 11h1v1h-1zM5 11h1v1h-1zM7 11h1v1h-1zM12 11h1v1h-1zM15 11h1v1h-1zM17 11h1v1h-1zM19 11h2v1h-2zM27 11h1v1h-1zM1 12h1v1h-1zM6 12h1v1h-1zM9 12h1v1h-1zM11 12h2v1h-2zM17 12h1v1h-1zM19 12h4v1h-4zM25 12h1v1h-1zM27 12h2v1h-2zM0 13h2v1h-2zM3 13h2v1h-2zM7 13h1v1h-1zM10 13h1v1h-1zM13 13h1v1h-1zM16 13h2v1h-2zM20 13h1v1h-1zM22 13h1v1h-1zM25 13h1v1h-1zM28 13h1v1h-1zM1 14h1v1h-1zM3 14h4v1h-4zM8 14h5v1h-5zM14 14h1v1h-1zM16 14h1v1h-1zM20 14h1v1h-1zM22 14h1v1h-1zM25 14h1v1h-1zM27 14h2v1h-2zM0 15h3v1h-3zM4 15h1v1h-1zM7 15h1v1h-1zM9 15h1v1h-1zM13 15h3v1h-3zM17 15h2v1h-2zM21 15h3v1h-3zM25 15h1v1h-1zM27 15h1v1h-1zM0 16h1v1h-1zM4 16h1v1h-1zM6 16h3v1h-3zM10 16h3v1h-3zM14 16h1v1h-1zM17 16h1v1h-1zM22 16h2v1h-2zM25 16h1v1h-1zM27 16h2v1h-2zM1 17h4v1h-4zM9 17h1v1h-1zM11 17h2v1h-2zM14 17h1v1h-1zM16 17h3v1h-3zM20 17h3v1h-3zM25 17h2v1h-2zM28 17h1v1h-1zM0 18h1v1h-1zM2 18h2v1h-2zM5 18h3v1h-3zM11 18h1v1h-1zM13 18h1v1h-1zM17 18h2v1h-2zM21 18h1v1h-1zM23 18h2v1h-2zM27 18h2v1h-2zM1 19h1v1h-1zM7 19h3v1h-3zM12 19h1v1h-1zM15 19h1v1h-1zM17 19h1v1h-1zM19 19h1v1h-1zM23 19h1v1h-1zM25 19h1v1h-1zM27 19h1v1h-1zM0 20h1v1h-1zM4 20h1v1h-1zM6 20h2v1h-2zM9 20h1v1h-1zM16 20h2v1h-2zM20 20h5v1h-5zM8 21h3v1h-3zM13 21h1v1h-1zM16 21h2v1h-2zM19 21h2v1h-2zM24 21h1v1h-1zM26 21h3v1h-3zM0 22h7v1h-7zM9 22h2v1h-2zM14 22h1v1h-1zM16 22h5v1h-5zM22 22h1v1h-1zM24 22h2v1h-2zM27 22h2v1h-2zM0 23h1v1h-1zM6 23h1v1h-1zM9 23h1v1h-1zM12 23h3v1h-3zM16 23h3v1h-3zM20 23h1v1h-1zM24 23h2v1h-2zM27 23h2v1h-2zM0 24h1v1h-1zM2 24h3v1h-3zM6 24h1v1h-1zM8 24h1v1h-1zM10 24h1v1h-1zM14 24h4v1h-4zM20 24h5v1h-5zM28 24h1v1h-1zM0 25h1v1h-1zM2 25h3v1h-3zM6 25h1v1h-1zM9 25h1v1h-1zM13 25h2v1h-2zM17 25h1v1h-1zM19 25h1v1h-1zM23 25h2v1h-2zM26 25h3v1h-3zM0 26h1v1h-1zM2 26h3v1h-3zM6 26h1v1h-1zM8 26h2v1h-2zM12 26h1v1h-1zM16 26h1v1h-1zM21 26h1v1h-1zM23 26h3v1h-3zM28 26h1v1h-1zM0 27h1v1h-1zM6 27h1v1h-1zM13 27h9v1h-9zM24 27h1v1h-1zM27 27h1v1h-1zM0 28h7v1h-7zM8 28h1v1h-1zM12 28h1v1h-1zM14 28h4v1h-4zM19 28h2v1h-2zM22 28h1v1h-1zM24 28h2v1h-2zM27 28h2v1h-2z',
+    _siteQrSvg(size) {
+      const n = this._SITE_QR_MODULES;
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-2 -2 ${n + 4} ${n + 4}" width="${size}" height="${size}" shape-rendering="crispEdges" role="img" aria-label="QR code for ${this.SITE_URL}"><rect x="-2" y="-2" width="${n + 4}" height="${n + 4}" fill="#fff"/><path d="${this._SITE_QR_PATH}" fill="#000"/></svg>`;
+    },
+
+    // Same wording as the customer site's receipt ("Three Hundred Two Taka only").
+    numberToWords(num) {
+      const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+        "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+      const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+      if (!isFinite(num) || num <= 0) return "Zero";
+      const integer = Math.floor(num);
+      if (integer === 0) return "Zero";
+      function convert(n) {
+        if (n < 20) return ones[n];
+        if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
+        if (n < 1000) return ones[Math.floor(n / 100)] + " Hundred" + (n % 100 ? " " + convert(n % 100) : "");
+        if (n < 100000) return convert(Math.floor(n / 1000)) + " Thousand" + (n % 1000 ? " " + convert(n % 1000) : "");
+        return convert(Math.floor(n / 100000)) + " Lakh" + (n % 100000 ? " " + convert(n % 100000) : "");
+      }
+      return convert(integer);
+    },
+
+    printStoreReceipt(order, rawItems, payments, settings, whatsappUrl) {
+      settings = settings || {};
+      const e = (v) => this.esc(v == null ? '' : String(v));
+      const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+
+      const storeName = (settings.store_name || '').trim() || 'Sardar Pharmacy';
+      const address = (settings.store_address || '').trim() || '10/1 Pallabi, Mirpur-11\u00bd, Dhaka-1216';
+      const phone = (settings.store_phone || '').trim() || '01559084327';
+
+      const total = num(order.grandTotal ?? order.total);
+      const subtotal = num(order.subtotal ?? total);
+      const discountAmt = num(order.discountAmount);
+      const taxAmt = num(order.taxAmount);
+      const paid = num(order.paidAmount);
+      const due = num(order.dueAmount);
+
+      // ── Items (row total = price x qty, exactly like the customer site; any
+      //    item-level discount is noted under the name and counted in "Discount")
+      const items = rawItems || [];
+      const anyItemDiscount = items.some(it => num(it.itemDiscount) > 0);
+      const itemRows = items.map((it) => {
+        const name = it.productName || it.name || '';
+        const qty = num(it.qty ?? it.quantity);
+        const price = num(it.unitPrice ?? it.price);
+        const strength = String(it.strength || '').trim();
+        const unitLabel = it.byPiece ? 'Piece' : (it.unit || '-');
+        const disc = num(it.itemDiscount);
+        const subs = [strength, disc > 0 ? `-${disc}% discount` : ''].filter(Boolean)
+          .map(t => `<br/><span class="sub">${e(t)}</span>`).join('');
+        return `
+      <tr>
+        <td>${e(name)}${it.variationName ? ` (${e(it.variationName)})` : ''}${subs}</td>
+        <td class="center">${e(unitLabel)}</td>
+        <td class="center">${qty}</td>
+        <td class="right">${price.toFixed(2)}</td>
+        <td class="right">${(price * qty).toFixed(2)}</td>
+      </tr>
+    `;
+      }).join('');
+
+      // ── Summary rows (only when they apply)
+      const globalPct = order.discountType === 'percentage' ? num(order.discountValue) : 0;
+      const discountLabel = (globalPct > 0 && !anyItemDiscount) ? `Discount (${globalPct}%):` : 'Discount:';
+      const discountRows = discountAmt > 0 ? `
+    <div class="summary-row">
+      <span>Subtotal:</span>
+      <span>&#2547;${subtotal.toFixed(2)}</span>
+    </div>
+    <div class="summary-row discount">
+      <span>${discountLabel}</span>
+      <span>-&#2547;${discountAmt.toFixed(2)}</span>
+    </div>
+  ` : '';
+      const taxRow = taxAmt > 0 ? `
+    <div class="summary-row">
+      <span>Tax (${num(order.taxPercent)}%):</span>
+      <span>&#2547;${taxAmt.toFixed(2)}</span>
+    </div>
+  ` : '';
+      const dueRows = due > 0.004 ? `
+    <div class="summary-row">
+      <span>Paid:</span>
+      <span>&#2547;${paid.toFixed(2)}</span>
+    </div>
+    <div class="summary-row">
+      <span>Due:</span>
+      <span>&#2547;${due.toFixed(2)}</span>
+    </div>
+  ` : '';
+      const noteRow = order.note ? `
+    <div class="divider"></div>
+    <div class="note">Note: ${e(order.note)}</div>
+  ` : '';
+
+      // ── Header block values
+      const methods = [...new Set((payments || [])
+        .filter(p => num(p.amount) > 0).map(p => p.method).filter(Boolean))];
+      const paymentText = methods.length ? methods.join(' + ') : (order.paymentMethod || 'Cash');
+      const d = new Date(order.date || order.createdAt || Date.now());
+      const dateText = (isNaN(d.getTime()) ? new Date() : d).toLocaleString('en-US');
+      const orderId = order.invoiceId || (order.id ? '#' + String(order.id).slice(0, 8).toUpperCase() : 'N/A');
+      const customer = order.customerName || order.name || 'Walk-in Customer';
+      const cPhone = order.customerPhone || order.phone || 'N/A';
+      const cAddress = order.address || 'In-store purchase';
+      const logoUrl = window.location.origin + '/pos/img/logo-receipt.png';
+
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Receipt - ${e(orderId)}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      width: 80mm;
+      max-width: 100%;
+      padding: 6px;
+      color: #000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .center { text-align: center; }
+    .right { text-align: right; }
+    .header { text-align: center; margin-bottom: 6px; }
+    .header h1 { font-size: 16px; font-weight: 900; letter-spacing: 1px; }
+    .header p { font-size: 11px; margin: 2px 0; font-weight: 600; }
+    .logo { display: block; margin: 0 auto 4px; height: 54px; width: auto; }
+    .divider { border-top: 2px dashed #000; margin: 6px 0; }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 3px 0;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    table { width: 100%; border-collapse: collapse; margin: 4px 0; font-size: 11px; }
+    thead tr { border-top: 2px solid #000; border-bottom: 2px solid #000; }
+    th { padding: 4px 2px; text-align: left; font-size: 11px; font-weight: 900; }
+    td { padding: 4px 2px; vertical-align: top; font-weight: 700; }
+    th:nth-child(2), td:nth-child(2),
+    th:nth-child(3), td:nth-child(3) { text-align: center; }
+    th:nth-child(4), td:nth-child(4),
+    th:nth-child(5), td:nth-child(5) { text-align: right; }
+    tbody tr:last-child { border-bottom: 2px solid #000; }
+    .sub { font-size: 10px; color: #222; font-weight: 600; }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      margin: 4px 0;
+    }
+    .summary-row.discount { color: #166534; }
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      font-weight: 900;
+      margin: 5px 0;
+      border-top: 2px solid #000;
+      padding-top: 4px;
+    }
+    .words { font-size: 10px; font-weight: 700; margin-bottom: 6px; }
+    .note { font-size: 11px; font-weight: 600; margin: 4px 0; }
+    .footer { text-align: center; font-size: 11px; font-weight: 700; margin-top: 8px; }
+    .qr { text-align: center; margin-top: 8px; }
+    .qr svg { width: 84px; height: 84px; }
+    .qr .url { font-size: 10px; font-weight: 700; margin-top: 2px; }
+    /* Print button: shown on screen, hidden when printing */
+    .print-btn-wrap { text-align: center; margin-top: 20px; }
+    .print-btn {
+      padding: 13px 36px;
+      font-size: 15px;
+      font-weight: 700;
+      background: #1e40af;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: sans-serif;
+    }
+    .wa-btn {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 10px 22px;
+      background: #25D366;
+      color: #fff;
+      border-radius: 10px;
+      font-family: sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    @media print {
+      @page { size: 80mm auto; margin: 0; }
+      body { padding: 4px; }
+      .print-btn-wrap { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img class="logo" src="${e(logoUrl)}" alt="" onerror="this.style.display='none'"/>
+    <h1>${e(storeName)}</h1>
+    <p>${e(address)}</p>
+    <p>Tel: ${e(phone)} | Open 10:00 AM \u2013 11:50 PM</p>
+    <p>---- RECEIPT ----</p>
+  </div>
+
+  <div class="divider"></div>
+  <div class="info-row"><span>Order ID:</span><span>${e(orderId)}</span></div>
+  <div class="info-row"><span>Date:</span><span>${e(dateText)}</span></div>
+  <div class="info-row"><span>Payment:</span><span>${e(paymentText)}</span></div>
+  <div class="info-row"><span>Status:</span><span>${e(order.status || 'completed')}</span></div>
+
+  <div class="divider"></div>
+  <div class="info-row"><span>Customer:</span><span>${e(customer)}</span></div>
+  <div class="info-row"><span>Phone:</span><span>${e(cPhone)}</span></div>
+  <div class="info-row"><span>Address:</span><span style="max-width:50mm;text-align:right;font-weight:700">${e(cAddress)}</span></div>
+
+  <div class="divider"></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Unit</th>
+        <th>Qty</th>
+        <th>Price</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+
+  <div class="divider"></div>
+  ${discountRows}${taxRow}
+  <div class="total-row">
+    <span>TOTAL:</span>
+    <span>&#2547;${total.toFixed(2)}</span>
+  </div>
+  ${dueRows}
+  <div class="words">${this.numberToWords(total)} Taka only</div>
+  ${noteRow}
+
+  <div class="divider"></div>
+  <div class="footer">
+    <p>Thank you for choosing ${e(storeName)}!</p>
+    <p>For queries call: ${e(phone)}</p>
+  </div>
+  <div class="qr">
+    ${this._siteQrSvg(84)}
+    <div class="url">${e(this.SITE_URL.replace(/^https?:\/\//, ''))}</div>
+  </div>
+
+  <!-- Shown on screen; tap to print. Hidden during actual printing via CSS. -->
+  <div class="print-btn-wrap">
+    <button class="print-btn" onclick="window.print()">&#128424;&#65039; Print Receipt</button>
+    ${whatsappUrl ? `<div><a class="wa-btn" href="${this.escAttr(whatsappUrl)}" target="_blank" rel="noopener noreferrer">&#128241; Share via WhatsApp</a></div>` : ''}
+  </div>
+
+  <script>
+    // Desktop: auto-print after load. Mobile: skip (unreliable), user taps button.
+    var isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (!isMobile) {
+      window.addEventListener('load', function () {
+        setTimeout(function () { window.print(); }, 350);
+      });
+    }
+  <\/script>
+</body>
+</html>`;
+
+      // Blob URL, like the customer site: opens as a normal page (not a popup),
+      // so it also works on phones and isn't caught by popup blockers.
+      const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(blob);
+      const win = window.open(blobUrl, '_blank');
+      if (!win || win.closed || typeof win.closed === 'undefined') {
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
     },
 
     /* ── Toast Notification ────────────────────────── */

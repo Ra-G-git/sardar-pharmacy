@@ -355,7 +355,15 @@ app.delete('/api/customers/:id', verifyRole(['admin', 'manager', 'cashier']), as
 app.get('/api/orders', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-    res.json(await pos.listOrders());
+    // Orders are stored with `name` / `phone`, but every POS screen reads
+    // `customerName` / `customerPhone` — so the Sales List customer column was
+    // blank and searching it threw. Provide both.
+    const orders = await pos.listOrders();
+    res.json(orders.map(o => ({
+      ...o,
+      customerName: o.customerName || o.name || 'Walk-in Customer',
+      customerPhone: o.customerPhone || o.phone || 'N/A',
+    })));
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.get('/api/orderItems', async (req, res) => {
@@ -367,6 +375,11 @@ app.get('/api/orderItems', async (req, res) => {
       productName: it.productName || it.name, variationName: it.variationName || '',
       qty: it.qty ?? it.quantity, unitPrice: it.unitPrice ?? it.price,
       total: it.total ?? ((it.unitPrice ?? it.price) * (it.qty ?? it.quantity)),
+      // Carried through so a reprinted receipt has the same detail as the
+      // original (strength line, unit column, piece/strip) — these were saved
+      // on the order but dropped here.
+      strength: it.strength || '', unit: it.unit || '', byPiece: !!it.byPiece,
+      category: it.category || '', itemDiscount: it.itemDiscount || 0,
     })));
     res.json(items);
   } catch (err) { res.status(500).json({ error: err.message }); }

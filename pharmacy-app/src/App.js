@@ -3,6 +3,7 @@ import Hero from "./Hero";
 import MedicineList from "./MedicineList";
 import { CartProvider } from "./CartContext";
 import "./App.css";
+import logo from "./logo.svg";
 
 function App() {
   return (
@@ -29,7 +30,9 @@ function App() {
             margin: "0 auto",
           }}>
             <div style={{
-              display: "inline-block",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "10px",
               backgroundColor: "rgba(255,255,255,0.15)",
               color: "white",
               padding: "8px 20px",
@@ -40,7 +43,8 @@ function App() {
               backdropFilter: "blur(10px)",
               border: "1px solid rgba(255,255,255,0.2)",
             }}>
-              💊 Sardar Pharmacy
+              <img src={logo} alt="" style={{ height: "26px", width: "auto" }} />
+              Sardar Pharmacy
             </div>
 
             <div style={{

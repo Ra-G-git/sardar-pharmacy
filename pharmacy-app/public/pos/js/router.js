@@ -35,7 +35,7 @@
 
       const user = POS.Store.getCurrentUser();
       if (!user) {
-        window.location.href = POS.BASE + '/login.html';
+        this._toLogin();
         return;
       }
 
@@ -60,7 +60,7 @@
 
       // Check session
       if (!currentUser) {
-        window.location.href = POS.BASE + '/login.html';
+        this._toLogin();
         return;
       }
 
@@ -113,14 +113,52 @@
           this.current = path;
           const mainContent = document.getElementById('main-content');
           if (mainContent) mainContent.scrollTop = 0;
-          handler(params);
+          const result = handler(params);
+          // Pages render asynchronously. Their errors used to escape this
+          // try/catch (nothing awaited the promise), leaving a blank page that
+          // a reload could not fix. Catch them and show what went wrong.
+          if (result && typeof result.catch === 'function') {
+            result.catch(err => this._showPageError(err, path));
+          }
           this._updateNav(path);
           this._updateBreadcrumb(path);
         } catch (err) {
-          console.error('Routing execution error:', err);
-          H.showToast(`Routing error: ${err.message}`, 'error');
+          this._showPageError(err, path);
         }
       }
+    },
+
+    // Send to the login page WITHOUT leaving a stale session behind. Otherwise
+    // login.html sees the leftover user/token, sends you straight back here,
+    // and the two pages redirect to each other forever (a blank, "crashed" page).
+    _toLogin() {
+      localStorage.removeItem('pos_user');
+      localStorage.removeItem('pos_token');
+      window.location.href = POS.BASE + '/login.html';
+    },
+
+    _showPageError(err, path) {
+      const H = POS.Helpers;
+      console.error('Routing execution error:', err);
+      if (this.current !== path) return; // the user already moved on to another page
+      const message = (err && err.message) || String(err);
+      const mc = document.getElementById('main-content');
+      if (!mc) return;
+      mc.innerHTML = `
+        <div class="card fade-in" style="max-width:560px; margin:40px auto;">
+          <div class="card-body" style="text-align:center; padding:32px;">
+            <div style="font-size:40px;">\u26a0\ufe0f</div>
+            <h3 style="margin:8px 0;">This page couldn't load</h3>
+            <p class="text-muted" style="margin-bottom:8px;">Something went wrong while opening <strong>${H.esc(path)}</strong>.</p>
+            <p style="font-family:monospace; font-size:12px; background:#f1f5f9; padding:8px 10px; border-radius:6px; word-break:break-word; text-align:left;">${H.esc(message)}</p>
+            <div style="display:flex; gap:10px; justify-content:center; margin-top:18px; flex-wrap:wrap;">
+              <button class="btn btn-primary" id="page-error-retry">Try again</button>
+              <a href="/dashboard" class="btn btn-secondary">Go to Dashboard</a>
+            </div>
+          </div>
+        </div>`;
+      const retry = document.getElementById('page-error-retry');
+      if (retry) retry.onclick = () => this._resolve();
     },
 
     _updateNav(path) {

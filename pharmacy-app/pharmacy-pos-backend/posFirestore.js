@@ -154,7 +154,7 @@ const SETTINGS_DEFAULTS = {
   store_name: 'Sardar Pharmacy',
   store_address: '10/1 Pallabi, Mirpur-11½, Dhaka-1216',
   store_phone: '01559084327',
-  store_website: 'https://sardar-pharmacy-rkgz.vercel.app',
+  store_website: 'https://sardar-pharmacy.vercel.app',
   invoice_logo: '/pos/img/logo.svg',
 };
 
@@ -301,7 +301,12 @@ async function createOrder({ order, items, payments }) {
   const docData = {
     userId: order.userId || 'pos', userEmail: order.userEmail || 'pos',
     name: order.customerName || 'Walk-in Customer', phone: order.customerPhone || 'N/A',
-    address: order.address || 'In-store purchase', paymentMethod: order.paymentMethod || 'cash',
+    address: order.address || 'In-store purchase', paymentMethod: order.paymentMethod || (() => {
+      // Was always 'cash' unless the client sent one — so a bKash sale printed
+      // "Payment: cash" on the main site's Admin receipt. Use what was really paid.
+      const used = [...new Set((payments || []).filter(p => (parseFloat(p.amount) || 0) > 0).map(p => p.method).filter(Boolean))];
+      return used.length ? used.join(' + ') : 'cash';
+    })(),
     orderType: 'pos', invoiceId, customerId: order.customerId || null,
     // Matches exactly what new-order.js sends: discountType is
     // 'percentage' or 'amount', discountValue is the raw number entered.
