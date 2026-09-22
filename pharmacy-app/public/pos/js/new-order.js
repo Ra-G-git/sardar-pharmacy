@@ -187,7 +187,7 @@
         }
 
         const matches = await S.query('customers', c =>
-          c.name.toLowerCase().includes(query) || c.phone.includes(query)
+          (c.name && c.name.toLowerCase().includes(query)) || (c.phone && c.phone.includes(query))
         );
 
         custResults.innerHTML = '';
@@ -201,7 +201,7 @@
               <div class="product-result-item" data-id="${c.id}">
                 <div>
                   <span class="pr-name">${H.esc(c.name)}</span>
-                  <span class="pr-sku" style="margin-left: 8px;">${H.esc(c.phone)}</span>
+                  <span class="pr-sku" style="margin-left: 8px;">${c.phone ? H.esc(c.phone) : 'No phone'}</span>
                 </div>
                 ${c.label ? `<span class="badge-label" style="${labelStyle} font-size:9px; padding:2px 6px;">${c.label}</span>` : ''}
               </div>
@@ -600,11 +600,11 @@
       const searchInput = document.getElementById('search-customer');
 
       if (c) {
-        searchInput.value = `${c.name} (${c.phone})`;
+        searchInput.value = c.phone ? `${c.name} (${c.phone})` : c.name;
         const labelStyle = c.label ? `background:${H.labelColors[c.label] || '#64748b'};` : '';
         det.innerHTML = `
           <div style="display:flex; align-items:center; gap:8px; background:var(--bg); padding:8px 12px; border-radius:var(--radius-xs); border:1px solid var(--border)">
-            <span>👤 ${H.esc(c.name)} | Label: <span class="badge-label" style="${labelStyle} font-size:9px; padding:2px 6px;">${c.label}</span></span>
+            <span>👤 ${H.esc(c.name)}${c.label ? ` | Label: <span class="badge-label" style="${labelStyle} font-size:9px; padding:2px 6px;">${c.label}</span>` : ''}</span>
             ${c.customDiscount > 0 ? `<span class="text-success" style="font-weight:700;">(Auto Discount: ${c.customDiscount}%)</span>` : ''}
             <button class="btn btn-secondary btn-sm" id="btn-clear-customer" style="padding:2px 8px; margin-left:auto;">Clear</button>
           </div>
@@ -653,21 +653,22 @@
           </div>
           <div class="modal-body">
             <div class="form-group">
-              <label class="form-label">Full Name</label>
+              <label class="form-label">Full Name <span style="color:var(--danger)">*</span></label>
               <input type="text" class="form-input" id="cust-modal-name" required>
             </div>
             <div class="form-group">
-              <label class="form-label">Phone Number</label>
+              <label class="form-label">Phone Number <span class="text-muted" style="font-weight:400;">(optional)</span></label>
               <input type="text" class="form-input" id="cust-modal-phone" value="${H.esc(prefilledPhone)}">
             </div>
             <div class="form-group">
-              <label class="form-label">Customer Label</label>
+              <label class="form-label">Customer Label <span class="text-muted" style="font-weight:400;">(optional)</span></label>
               <select class="form-select" id="cust-modal-label">
+                <option value="">— None —</option>
                 ${H.customerLabels.map(l => `<option value="${l}">${l}</option>`).join('')}
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Custom Discount (%)</label>
+              <label class="form-label">Custom Discount (%) <span class="text-muted" style="font-weight:400;">(optional)</span></label>
               <input type="number" class="form-input" id="cust-modal-discount" value="0" min="0" max="100">
             </div>
           </div>
@@ -689,8 +690,8 @@
         const label = overlay.querySelector('#cust-modal-label').value;
         const discount = parseFloat(overlay.querySelector('#cust-modal-discount').value) || 0;
 
-        if (!name || !phone) {
-          H.showToast('Please enter name and phone', 'error');
+        if (!name) {
+          H.showToast('Please enter a name', 'error');
           return;
         }
 

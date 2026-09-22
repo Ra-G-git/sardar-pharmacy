@@ -49,8 +49,8 @@
 
       const customers = await S.query('customers', c => {
         if (search) {
-          const nameMatch = c.name.toLowerCase().includes(search);
-          const phoneMatch = c.phone.includes(search);
+          const nameMatch = c.name ? c.name.toLowerCase().includes(search) : false;
+          const phoneMatch = c.phone ? c.phone.includes(search) : false;
           const labelMatch = c.label ? c.label.toLowerCase().includes(search) : false;
           if (!nameMatch && !phoneMatch && !labelMatch) return false;
         }
@@ -88,7 +88,7 @@
               <div class="customer-avatar" style="${labelStyle}">${avatarChar}</div>
               <div>
                 <div class="customer-name">${H.esc(c.name)}</div>
-                <div class="customer-phone">📞 ${H.esc(c.phone)}</div>
+                <div class="customer-phone">📞 ${c.phone ? H.esc(c.phone) : 'No phone on file'}</div>
               </div>
               <div style="margin-left:auto; display:flex; flex-direction:column; gap:4px; align-items:flex-end;">
                 ${c.label ? `<span class="badge-label" style="${labelStyle}">${c.label}</span>` : ''}
@@ -141,29 +141,30 @@
           </div>
           <div class="modal-body">
             <div class="form-group">
-              <label class="form-label">Full Name</label>
+              <label class="form-label">Full Name <span style="color:var(--danger)">*</span></label>
               <input type="text" class="form-input" id="c-name" value="${customer ? H.esc(customer.name) : ''}">
             </div>
             <div class="form-group">
-              <label class="form-label">Phone Number</label>
+              <label class="form-label">Phone Number <span class="text-muted" style="font-weight:400;">(optional)</span></label>
               <input type="text" class="form-input" id="c-phone" value="${customer ? H.esc(customer.phone) : ''}">
             </div>
             <div class="form-group">
-              <label class="form-label">Email</label>
+              <label class="form-label">Email <span class="text-muted" style="font-weight:400;">(optional)</span></label>
               <input type="email" class="form-input" id="c-email" value="${customer ? H.esc(customer.email) : ''}">
             </div>
             <div class="form-group">
-              <label class="form-label">Label Group</label>
+              <label class="form-label">Label Group <span class="text-muted" style="font-weight:400;">(optional)</span></label>
               <select class="form-select" id="c-label">
+                <option value="">— None —</option>
                 ${H.customerLabels.map(l => `<option value="${l}" ${customer && customer.label === l ? 'selected' : ''}>${l}</option>`).join('')}
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label">Custom Discount Percentage (%)</label>
+              <label class="form-label">Custom Discount Percentage (%) <span class="text-muted" style="font-weight:400;">(optional)</span></label>
               <input type="number" class="form-input" id="c-discount" min="0" max="100" value="${customer ? customer.customDiscount : '0'}">
             </div>
             <div class="form-group">
-              <label class="form-label">Address</label>
+              <label class="form-label">Address <span class="text-muted" style="font-weight:400;">(optional)</span></label>
               <textarea class="form-textarea" id="c-address">${customer ? H.esc(customer.address) : ''}</textarea>
             </div>
           </div>
@@ -188,8 +189,8 @@
         const discount = parseFloat(overlay.querySelector('#c-discount').value) || 0;
         const address = overlay.querySelector('#c-address').value.trim();
 
-        if (!name || !phone) {
-          H.showToast('Name and phone are required fields', 'error');
+        if (!name) {
+          H.showToast('Full name is required', 'error');
           return;
         }
 
@@ -242,7 +243,7 @@
           </div>
           <div class="modal-body">
             <div style="background:var(--bg); border:1px solid var(--border); padding:12px; border-radius:var(--radius-sm); margin-bottom:16px;">
-              <p><strong>Phone:</strong> ${H.esc(customer.phone)}</p>
+              <p><strong>Phone:</strong> ${customer.phone ? H.esc(customer.phone) : 'N/A'}</p>
               <p><strong>Email:</strong> ${customer.email ? H.esc(customer.email) : 'N/A'}</p>
               <p><strong>Group Label:</strong> ${customer.label || 'Regular'}</p>
               <p><strong>Direct discount amount setup:</strong> ${customer.customDiscount}%</p>

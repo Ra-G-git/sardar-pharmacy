@@ -238,7 +238,7 @@
         }
 
         const list = await S.query('customers', c =>
-          c.name.toLowerCase().includes(query) || c.phone.includes(query)
+          (c.name && c.name.toLowerCase().includes(query)) || (c.phone && c.phone.includes(query))
         );
 
         custResults.innerHTML = '';
@@ -257,7 +257,7 @@
           item.className = 'product-result-item';
           item.innerHTML = `
             <div style="font-weight:600;">${H.esc(c.name)}</div>
-            <div style="font-size:11px; color:#64748b;">Phone: ${H.esc(c.phone)}</div>
+            <div style="font-size:11px; color:#64748b;">Phone: ${c.phone ? H.esc(c.phone) : 'N/A'}</div>
           `;
           item.onclick = () => {
             this.selectCustomer(c);
@@ -472,7 +472,7 @@
       details.innerHTML = `
         <div style="background:var(--primary-50); border:1.5px dashed var(--primary); padding:10px 14px; border-radius:var(--radius-sm); position:relative;">
           <div style="font-weight:700; color:var(--primary-dark); font-size:13px;">👥 ${POS.Helpers.esc(c.name)}</div>
-          <div style="font-size:11px; color:var(--text-secondary);">Phone: ${POS.Helpers.esc(c.phone)} | Address: ${POS.Helpers.esc(c.address || 'N/A')}</div>
+          <div style="font-size:11px; color:var(--text-secondary);">Phone: ${POS.Helpers.esc(c.phone || 'N/A')} | Address: ${POS.Helpers.esc(c.address || 'N/A')}</div>
           <button id="btn-remove-cust" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); border:none; background:none; font-size:16px; cursor:pointer; color:var(--danger);" title="Deselect Customer">&times;</button>
         </div>
       `;

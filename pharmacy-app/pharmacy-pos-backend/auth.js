@@ -13,7 +13,7 @@
 
 const crypto = require('crypto');
 
-const TOKEN_TTL_SECONDS = 12 * 60 * 60; // one long shift; re-login after that
+const TOKEN_TTL_SECONDS = 16 * 60 * 60; // one long shift; re-login after that
 
 let SECRET = process.env.JWT_SECRET;
 if (!SECRET || SECRET.length < 32) {
