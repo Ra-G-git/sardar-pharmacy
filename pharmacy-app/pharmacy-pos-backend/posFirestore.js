@@ -351,13 +351,17 @@ async function createOrder({ order, items, payments }) {
         // reason as grandTotal above.
         qty, unitPrice, total,
         productName: i.productName || i.name, variationName: i.variationName || '',
+        // A "custom" line the cashier typed in at checkout — not a real
+        // catalog item. Stored on the order for the receipt, but must
+        // never touch `inventory`: deductStock below is filtered on this.
+        isCustom: !!i.isCustom,
       };
     }),
     payments: payments || [],
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   };
   const ref = await db.collection('orders').add(docData);
-  await deductStock(docData.items.filter(i => i.slug).map(i => ({ slug: i.slug, quantity: i.quantity })));
+  await deductStock(docData.items.filter(i => i.slug && !i.isCustom).map(i => ({ slug: i.slug, quantity: i.quantity })));
   return { id: ref.id, invoiceId };
 }
 
@@ -365,7 +369,7 @@ async function restoreStockForOrder(orderId) {
   const doc = await db.collection('orders').doc(orderId).get();
   if (!doc.exists) return;
   const items = doc.data().items || [];
-  const restore = items.filter(i => i.slug).map(i => ({ slug: i.slug, quantity: -i.quantity }));
+  const restore = items.filter(i => i.slug && !i.isCustom).map(i => ({ slug: i.slug, quantity: -i.quantity }));
   await deductStock(restore); // negative quantity = adds back
 }
 
@@ -395,10 +399,11 @@ async function createReturn({ returnRecord, items }) {
     returnTotal: returnRecord.returnTotal, status: returnRecord.status || 'completed',
     items: (items || []).map(i => ({
       slug: i.productId || i.slug, productName: i.productName, qty: i.qty, unitPrice: i.unitPrice, returnAmount: i.returnAmount,
+      isCustom: !!i.isCustom,
     })),
   };
   const ref = await db.collection('pos_returns').add(docData);
-  await deductStock(docData.items.filter(i => i.slug).map(i => ({ slug: i.slug, quantity: -i.qty })));
+  await deductStock(docData.items.filter(i => i.slug && !i.isCustom).map(i => ({ slug: i.slug, quantity: -i.qty })));
   if (returnRecord.orderId) {
     await db.collection('orders').doc(returnRecord.orderId).update({
       returnedAmount: admin.firestore.FieldValue.increment(returnRecord.returnTotal || 0),

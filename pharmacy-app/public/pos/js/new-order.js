@@ -38,7 +38,7 @@
               <div class="card-body form-row">
                 <div class="form-group" style="position:relative;">
                   <label class="form-label">Customer Phone / Name</label>
-                  <input type="text" class="form-input" id="search-customer" placeholder="Search phone or name...">
+                  <input type="text" class="form-input" id="search-customer" placeholder="Search phone or name..." style="border: 2px solid #0d9488; font-weight: 500;">
                   <div class="product-results" id="customer-results"></div>
                   <div id="customer-details" class="mt-1" style="display:none;"></div>
                 </div>
@@ -55,9 +55,9 @@
                 <div class="product-search-wrap">
                   <div style="display: flex; gap: 8px;">
                     <div class="search-box" style="flex: 1;">
-                      <input type="text" id="search-product" placeholder="Type product name, SKU or scan barcode...">
+                      <input type="text" id="search-product" placeholder="Type medicine name, generic, SKU or scan barcode..." style="border: 2px solid #0d9488; font-weight: 500;">
                     </div>
-                    <button class="btn btn-secondary" id="btn-scan" title="Simulate Barcode Scan">📷 Scan</button>
+                    <button type="button" class="btn btn-primary" id="btn-add-custom-product" title="Add Custom Product" style="white-space:nowrap; display:inline-flex; align-items:center; gap:6px; font-weight:600;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Custom Product</button>
                   </div>
                   <div class="product-results" id="product-results"></div>
                 </div>
@@ -489,25 +489,12 @@
         }
       };
 
-      document.getElementById('btn-scan').onclick = () => {
-        searchProd.value = '';
-        searchProd.focus();
-        
-        searchProd.placeholder = "📷 Scanning... scan barcode now!";
-        searchProd.style.borderColor = "var(--primary-color, #3b82f6)";
-        searchProd.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.25)";
-        
-        H.showToast('Scanner ready. Scan the product barcode now.');
-
-        const resetStyle = () => {
-          searchProd.placeholder = "Type product name, SKU or scan barcode...";
-          searchProd.style.borderColor = "";
-          searchProd.style.boxShadow = "";
+      const btnAddCustom = document.getElementById('btn-add-custom-product');
+      if (btnAddCustom) {
+        btnAddCustom.onclick = () => {
+          this.addCustomProduct();
         };
-
-        searchProd.onblur = resetStyle;
-        searchProd.oninput = resetStyle;
-      };
+      }
 
       // ── Discount & Tax Changes ───────────────────────
       const discType = document.getElementById('discount-type');
@@ -730,6 +717,30 @@
       this.recalculate();
     },
 
+    // Adds a one-off line for something not in the medicine catalog (e.g. a
+    // one-time item or service). Lives only in this cart/order — it is never
+    // written to Medicine/Inventory, so it won't show up in product search,
+    // stock reports, or anywhere else afterward.
+    addCustomProduct() {
+      const customItem = {
+        productId: 'custom_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 6),
+        productName: '',
+        variationName: '',
+        unitPrice: '',
+        qty: 1,
+        stock: 999999,
+        image: '',
+        isCustom: true
+      };
+      this.cart.unshift(customItem);
+      this.renderCart();
+      this.recalculate();
+      setTimeout(() => {
+        const firstInput = document.querySelector('.input-custom-name');
+        if (firstInput) firstInput.focus();
+      }, 50);
+    },
+
     renderCart() {
       const H = POS.Helpers;
       const tbody = document.getElementById('cart-tbody');
@@ -741,34 +752,45 @@
       }
 
       this.cart.forEach((item, index) => {
-        const thumbHtml = item.image 
-          ? `<img src="${item.image}" style="width:30px; height:30px; object-fit:cover; border-radius:var(--radius-xs); margin-right:8px;">`
-          : `<div style="width:30px; height:30px; border-radius:var(--radius-xs); background:#f1f5f9; display:flex; align-items:center; justify-content:center; margin-right:8px; font-size:14px;">${H.categoryEmoji(item.category)}</div>`;
+        const thumbHtml = item.isCustom
+          ? `<div style="width:30px; height:30px; border-radius:var(--radius-xs); background:#f1f5f9; display:flex; align-items:center; justify-content:center; margin-right:8px; font-size:14px; font-weight:800; color:#0d9488;">+</div>`
+          : item.image
+            ? `<img src="${item.image}" style="width:30px; height:30px; object-fit:cover; border-radius:var(--radius-xs); margin-right:8px;">`
+            : `<div style="width:30px; height:30px; border-radius:var(--radius-xs); background:#f1f5f9; display:flex; align-items:center; justify-content:center; margin-right:8px; font-size:14px;">${H.categoryEmoji(item.category)}</div>`;
 
         const unitSize = parseFloat(item.unitSize) || 1;
-        const pieceToggleHtml = unitSize > 1 ? `
+        const pieceToggleHtml = (!item.isCustom && unitSize > 1) ? `
           <button class="btn-toggle-piece" data-index="${index}" style="font-size:9px; font-weight:800; padding:2px 6px; border-radius:4px; border:none; cursor:pointer; margin-top:3px; background:${item.byPiece ? 'var(--primary)' : '#e2e8f0'}; color:${item.byPiece ? 'white' : '#475569'};">
             ${item.byPiece ? 'Piece' : 'Strip'}
           </button>
         ` : '';
 
+        const nameColHtml = item.isCustom
+          ? `<div style="display:flex; align-items:center;">
+               ${thumbHtml}
+               <div style="flex:1;">
+                 <input type="text" class="form-input input-custom-name" value="${H.esc(item.productName || '')}" placeholder="Enter item / service name..." style="padding:4px 8px; height:28px; font-size:12px; font-weight:600; width:100%;">
+               </div>
+             </div>`
+          : `<div style="display:flex; align-items:center;">
+               ${thumbHtml}
+               <div>
+                 <div class="cart-item-name">${H.esc(item.productName)}${H.strengthBadge(item.strength)}</div>
+                 ${(item.category || item.generic) ? `<div style="font-size:10px; color:#64748b;">${H.esc([item.category, item.generic].filter(Boolean).join(' · '))}</div>` : ''}
+                 ${item.variationName ? `<div class="cart-item-variant">${H.esc(item.variationName)}</div>` : ''}
+                 ${pieceToggleHtml}
+               </div>
+             </div>`;
+
         tbody.innerHTML += `
           <tr class="cart-item-row" data-index="${index}">
             <td>
-              <div style="display:flex; align-items:center;">
-                ${thumbHtml}
-                <div>
-                  <div class="cart-item-name">${H.esc(item.productName)}${H.strengthBadge(item.strength)}</div>
-                  ${(item.category || item.generic) ? `<div style="font-size:10px; color:#64748b;">${H.esc([item.category, item.generic].filter(Boolean).join(' · '))}</div>` : ''}
-                  ${item.variationName ? `<div class="cart-item-variant">${H.esc(item.variationName)}</div>` : ''}
-                  ${pieceToggleHtml}
-                </div>
-              </div>
+              ${nameColHtml}
             </td>
             <td>
               <div style="display:flex; align-items:center; gap:4px; max-width:110px;">
                 <span>৳</span>
-                <input type="number" class="input-price form-input" value="${item.unitPrice}" min="0.01" step="0.01" style="padding:4px 6px; height:28px; width:100%; font-size:12px; font-weight:600;">
+                <input type="number" class="input-price form-input" value="${item.unitPrice}" placeholder="${item.isCustom ? '0.00' : ''}" min="0" step="0.01" style="padding:4px 6px; height:28px; width:100%; font-size:12px; font-weight:600;">
               </div>
               <div style="display:flex; align-items:center; gap:4px; max-width:110px; margin-top:4px;">
                 <input type="number" class="input-item-discount form-input" value="${item.customDiscount || ''}" min="0" max="100" step="0.1" placeholder="Disc %" title="Discount just for this item — skips the global discount below" style="padding:4px 6px; height:24px; width:100%; font-size:11px;">
@@ -784,7 +806,7 @@
             </td>
             <td style="font-weight:700;">
               ${(() => {
-                const lineSubtotal = item.unitPrice * item.qty;
+                const lineSubtotal = (parseFloat(item.unitPrice) || 0) * item.qty;
                 const disc = parseFloat(item.customDiscount) || 0;
                 const lineTotal = disc > 0 ? lineSubtotal * (1 - disc / 100) : lineSubtotal;
                 return disc > 0
@@ -793,7 +815,7 @@
               })()}
             </td>
             <td>
-              <button class="btn btn-secondary btn-sm btn-cart-edit" style="padding:4px 8px;" title="Edit this medicine">✏️</button>
+              ${item.isCustom ? '' : '<button class="btn btn-secondary btn-sm btn-cart-edit" style="padding:4px 8px;" title="Edit this medicine">✏️</button>'}
               <button class="btn btn-danger btn-sm btn-qty-remove" style="padding:4px 8px;">🗑️</button>
             </td>
           </tr>
@@ -804,6 +826,13 @@
       tbody.querySelectorAll('.cart-item-row').forEach(row => {
         const index = parseInt(row.dataset.index);
         const item = this.cart[index];
+
+        const customNameInput = row.querySelector('.input-custom-name');
+        if (customNameInput) {
+          customNameInput.oninput = (e) => {
+            item.productName = e.target.value;
+          };
+        }
 
         const pieceBtn = row.querySelector('.btn-toggle-piece');
         if (pieceBtn) {
@@ -875,7 +904,9 @@
           this.recalculate();
         };
 
-        row.querySelector('.btn-cart-edit').onclick = async () => {
+        const cartEditBtn = row.querySelector('.btn-cart-edit');
+        if (cartEditBtn) {
+          cartEditBtn.onclick = async () => {
           const S = POS.Store;
           const catalog = await S.getProductCatalog();
           const full = catalog.find(prod => prod.id === item.productId);
@@ -900,7 +931,8 @@
             }
             this.renderCart();
           });
-        };
+          };
+        }
 
         row.querySelector('.btn-qty-remove').onclick = () => {
           this.cart.splice(index, 1);
@@ -1076,6 +1108,17 @@
         return;
       }
 
+      for (const item of this.cart) {
+        if (item.isCustom && (!item.productName || !item.productName.trim())) {
+          H.showToast('Please enter a name for every custom product.', 'warning');
+          return;
+        }
+        if (!item.unitPrice || item.unitPrice <= 0) {
+          H.showToast(`Please enter a valid price for "${item.productName || 'custom item'}".`, 'warning');
+          return;
+        }
+      }
+
       const salesDate = document.getElementById('sales-date').value;
       const { subtotal, discountAmount, taxPercent, taxAmount, grandTotal } = this.calculateTotals();
       const discType = document.getElementById('discount-type').value;
@@ -1136,7 +1179,10 @@
         itemDiscount: parseFloat(item.customDiscount) || 0,
         total: (parseFloat(item.customDiscount) || 0) > 0
           ? (item.unitPrice * item.qty) * (1 - (parseFloat(item.customDiscount) / 100))
-          : item.unitPrice * item.qty
+          : item.unitPrice * item.qty,
+        // Flags this as a one-off line typed in at checkout, not a real
+        // catalog item — the backend uses this to skip inventory entirely.
+        isCustom: !!item.isCustom
       }));
 
       const orderPaymentsList = this.payments.map(p => ({
