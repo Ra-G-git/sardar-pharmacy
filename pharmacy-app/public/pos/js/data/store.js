@@ -144,11 +144,37 @@
       throw lastErr;
     },
 
-    async getAll(collection) {
+    // Short-lived in-memory cache so switching pages (Dashboard -> Customers ->
+    // New Order -> back to Dashboard) doesn't re-hit Render + Firestore for the
+    // same collection every time. A write to a collection (add/update/delete)
+    // clears its entry immediately, so nothing goes stale after an edit — this
+    // only saves the repeat reads in between.
+    _cache: {},
+    _CACHE_TTL_MS: 45000,
+
+    invalidate(collection) {
+      delete this._cache[collection];
+      // The in-memory product catalog (used by the medicine search box) has
+      // its own cache separate from _cache — clear it too so an edited/added/
+      // deleted product shows up without a full page reload.
+      if (collection === 'products') this._productCatalogPromise = null;
+    },
+
+    async getAll(collection, opts) {
+      const fresh = opts && opts.fresh;
+      const cached = this._cache[collection];
+      if (!fresh && cached && (Date.now() - cached.ts) < this._CACHE_TTL_MS) {
+        return cached.data;
+      }
       try {
-        return await this._fetchAll(collection);
+        const data = await this._fetchAll(collection);
+        this._cache[collection] = { data, ts: Date.now() };
+        return data;
       } catch (err) {
         console.error(`Error fetching ${collection}:`, err);
+        // Serve stale cache rather than an empty list if we have one — better
+        // than the whole page looking empty because Render hiccuped once.
+        if (cached) return cached.data;
         return [];
       }
     },
@@ -217,6 +243,7 @@
           const errData = await res.json();
           throw new Error(errData.error || `HTTP error ${res.status}`);
         }
+        this.invalidate(collection);
         return item;
       } catch (err) {
         console.error(`Error adding to ${collection}:`, err);
@@ -237,6 +264,7 @@
           const errData = await res.json();
           throw new Error(errData.error || `HTTP error ${res.status}`);
         }
+        this.invalidate(collection);
         return updates;
       } catch (err) {
         console.error(`Error updating ${collection}:`, err);
@@ -255,6 +283,7 @@
           const errData = await res.json();
           throw new Error(errData.error || `HTTP error ${res.status}`);
         }
+        this.invalidate(collection);
         return res.ok;
       } catch (err) {
         console.error(`Error deleting from ${collection}:`, err);
@@ -290,6 +319,9 @@
           body: JSON.stringify({ order, items, payments })
         });
         if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        this.invalidate('orders');
+        this.invalidate('products');
+        this.invalidate('customers');
         return await res.json();
       } catch (err) {
         console.error('Error placing order:', err);
@@ -305,6 +337,9 @@
           body: JSON.stringify({ returnRecord, items })
         });
         if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        this.invalidate('returns');
+        this.invalidate('orders');
+        this.invalidate('products');
         return await res.json();
       } catch (err) {
         console.error('Error processing return:', err);
@@ -320,6 +355,8 @@
           body: JSON.stringify({ order, items, payments })
         });
         if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        this.invalidate('orders');
+        this.invalidate('products');
         return await res.json();
       } catch (err) {
         console.error('Error updating order:', err);

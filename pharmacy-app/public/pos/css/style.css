@@ -188,7 +188,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   transition: max-height .3s ease;
 }
 
-.nav-group-items.open { max-height: 500px; }
+.nav-group-items.open { max-height: 800px; }
 
 .sub-item { padding-left: 56px; font-size: 13px; }
 
