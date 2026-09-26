@@ -11,7 +11,7 @@ function Hero() {
           Get genuine medicines delivered fast. Serving Mirpur since day one.
         </p>
         <div style={styles.info}>
-          <span style={styles.infoItem}>📍 10/1 Pallabi, Mirpur-11½, Dhaka-1216</span>
+          <span style={styles.infoItem}>📍 10/1, Pallabi, Dhaka-1216</span>
           <span style={styles.infoItem}>📞 01559084327</span>
           <span style={styles.infoItem}>🕐 Open 10:00 AM – 11:50 PM</span>
         </div>

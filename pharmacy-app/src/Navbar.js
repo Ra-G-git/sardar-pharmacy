@@ -6,7 +6,6 @@ import Cart from "./Cart";
 import Auth from "./Auth";
 import MyOrders from "./MyOrders";
 import PrescriptionUpload from "./PrescriptionUpload";
-import logo from "./logo.svg";
 
 function Navbar() {
   const { cart } = useCart();
@@ -47,7 +46,7 @@ function Navbar() {
           boxShadow: scrolled ? "0 4px 20px rgba(0,0,0,0.15)" : "none",
         }}>
           <div style={styles.logoSection}>
-            <img src={logo} alt="Sardar Pharmacy" style={styles.logoImg} />
+            <img src="/logo.svg" alt="Sardar Pharmacy" style={styles.logoImg} />
             <div>
               <h2 style={styles.logoText}>Sardar Pharmacy</h2>
               <p style={styles.logoSub}>Mirpur, Dhaka</p>
@@ -127,7 +126,7 @@ function Navbar() {
               </button>
             </>
           ) : (
-            <button style={{ ...styles.mobileLink, color: "#93c5fd" }} onClick={() => { setAuthOpen(true); close(); }}>
+            <button style={{ ...styles.mobileLink, color: "#86efac" }} onClick={() => { setAuthOpen(true); close(); }}>
               <span style={styles.mobileLinkIcon}>👤</span> Login / Register
             </button>
           )}
@@ -147,7 +146,7 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    background: "linear-gradient(135deg, #1e40af 0%, #2563eb 100%)",
+    background: "linear-gradient(135deg, #1a3a22 0%, #24512F 100%)",
     padding: "14px 24px",
     position: "sticky",
     top: 0,
@@ -160,7 +159,7 @@ const styles = {
     gap: "12px",
   },
   logoImg: {
-    height: "36px",
+    height: "48px",
     width: "auto",
     objectFit: "contain",
   },
@@ -182,7 +181,7 @@ const styles = {
     right: 0,
     width: "280px",
     bottom: 0,
-    backgroundColor: "#1e3a8a",
+    backgroundColor: "#1a3a22",
     zIndex: 999,
     overflowY: "auto",
     display: "flex",
@@ -222,7 +221,7 @@ const styles = {
     margin: "8px 0",
   },
   mobileEmail: {
-    color: "#93c5fd",
+    color: "#86efac",
     fontSize: "13px",
     padding: "12px 28px",
     margin: 0,
@@ -237,7 +236,7 @@ const styles = {
   },
   loginBtn: {
     backgroundColor: "white",
-    color: "#2563eb",
+    color: "#24512F",
     border: "none",
     padding: "8px 14px",
     borderRadius: "8px",
@@ -265,7 +264,7 @@ const styles = {
   },
   cartBtn: {
     backgroundColor: "white",
-    color: "#2563eb",
+    color: "#24512F",
     border: "none",
     padding: "8px 14px",
     borderRadius: "8px",

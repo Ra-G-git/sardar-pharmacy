@@ -797,7 +797,7 @@ _Thank you for shopping with us!_`;
       const num = (v) => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
 
       const storeName = (settings.store_name || '').trim() || 'Sardar Pharmacy';
-      const address = (settings.store_address || '').trim() || '10/1 Pallabi, Mirpur-11\u00bd, Dhaka-1216';
+      const address = (settings.store_address || '').trim() || '10/1, Pallabi, Dhaka-1216';
       const phone = (settings.store_phone || '').trim() || '01559084327';
 
       const total = num(order.grandTotal ?? order.total);
@@ -900,7 +900,7 @@ _Thank you for shopping with us!_`;
     .header { text-align: center; margin-bottom: 6px; }
     .header h1 { font-size: 16px; font-weight: 900; letter-spacing: 1px; }
     .header p { font-size: 11px; margin: 2px 0; font-weight: 600; }
-    .logo { display: block; margin: 0 auto 4px; height: 54px; width: auto; }
+    .logo { display: block; margin: 0 auto 4px; height: 90px; width: auto; }
     .divider { border-top: 2px dashed #000; margin: 6px 0; }
     .info-row {
       display: flex;
@@ -1021,7 +1021,6 @@ _Thank you for shopping with us!_`;
   <div class="divider"></div>
   <div class="footer">
     <p>Thank you for choosing ${e(storeName)}!</p>
-    <p>For queries call: ${e(phone)}</p>
   </div>
   <div class="qr">
     ${this._siteQrSvg(84)}

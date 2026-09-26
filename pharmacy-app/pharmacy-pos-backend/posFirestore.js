@@ -158,10 +158,10 @@ async function deleteUser(id) {
 // explicitly set via the Settings page, so a fresh setup isn't blank/wrong.
 const SETTINGS_DEFAULTS = {
   store_name: 'Sardar Pharmacy',
-  store_address: '10/1 Pallabi, Mirpur-11½, Dhaka-1216',
+  store_address: '10/1, Pallabi, Dhaka-1216',
   store_phone: '01559084327',
   store_website: 'https://sardar-pharmacy.vercel.app',
-  invoice_logo: '/pos/img/logo.svg',
+  invoice_logo: '/logo.svg',
 };
 
 function withTimeout(promise, ms, label) {

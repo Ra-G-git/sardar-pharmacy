@@ -689,7 +689,7 @@
     /* ── Internal Code Renderers ─────────────────────── */
     _generateLabelHTML(name, sku, barcode, price, size, color, config, uniqueId) {
       const H = POS.Helpers;
-      const storeName = this.settings.store_name || 'PharmaPOS Store';
+      const storeName = this.settings.store_name || 'SP+POS Store';
 
       const showStore = config.showStore ? `<div class="lbl-store" style="font-size:${config.height < 30 ? '7px' : '9px'}">${H.esc(storeName)}</div>` : '';
             const showName = config.showName ? `<div class="lbl-title" style="font-size:${config.height < 30 ? '9px' : '11px'}">${H.esc(name)}</div>` : '';

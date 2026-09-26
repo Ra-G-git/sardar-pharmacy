@@ -3,7 +3,6 @@ import Hero from "./Hero";
 import MedicineList from "./MedicineList";
 import { CartProvider } from "./CartContext";
 import "./App.css";
-import logo from "./logo.svg";
 
 function App() {
   return (
@@ -17,7 +16,7 @@ function App() {
           <MedicineList />
         </div>
         <div id="contact" style={{
-          background: "linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 50%, #0ea5e9 100%)",
+          background: "linear-gradient(135deg, #14291a 0%, #24512F 55%, #3d8b52 100%)",
           padding: "60px 24px",
           textAlign: "center",
           position: "relative",
@@ -43,7 +42,7 @@ function App() {
               backdropFilter: "blur(10px)",
               border: "1px solid rgba(255,255,255,0.2)",
             }}>
-              <img src={logo} alt="" style={{ height: "26px", width: "auto" }} />
+              <img src="/logo.svg" alt="" style={{ height: "32px", width: "auto" }} />
               Sardar Pharmacy
             </div>
 
@@ -60,7 +59,7 @@ function App() {
                 backgroundColor: "rgba(255,255,255,0.1)",
                 padding: "6px 14px",
                 borderRadius: "50px",
-              }}>📍 10/1 Pallabi, Mirpur-11½, Dhaka-1216</span>
+              }}>📍 10/1, Pallabi, Dhaka-1216</span>
 
               <span style={{
                 color: "rgba(255,255,255,0.75)",

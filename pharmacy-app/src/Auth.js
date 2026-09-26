@@ -8,7 +8,6 @@ import {
   GoogleAuthProvider,
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
-import logo from "./logo.svg";
 
 function Auth({ onClose }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -108,7 +107,7 @@ function Auth({ onClose }) {
     <div style={styles.overlay}>
       <div style={styles.box}>
         <div style={styles.header}>
-          <img src={logo} alt="Sardar Pharmacy" style={styles.headerLogo} />
+          <img src="/logo.svg" alt="Sardar Pharmacy" style={styles.headerLogo} />
           <h2 style={styles.title}>
             {isLogin ? "Welcome Back!" : "Create Account"}
           </h2>
@@ -236,7 +235,7 @@ const styles = {
     boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
   },
   header: {
-    background: "linear-gradient(135deg, #1e3a8a, #2563eb)",
+    background: "linear-gradient(135deg, #1a3a22, #24512F)",
     padding: "32px 28px 28px",
     textAlign: "center",
     position: "relative",
@@ -298,7 +297,7 @@ const styles = {
   },
   activeTab: {
     backgroundColor: "white",
-    color: "#1e40af",
+    color: "#24512F",
     boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
   },
   googleBtn: {
@@ -391,7 +390,7 @@ const styles = {
   submitBtn: {
     width: "100%",
     padding: "14px",
-    background: "linear-gradient(135deg, #1e40af, #2563eb)",
+    background: "linear-gradient(135deg, #1a3a22, #24512F)",
     color: "white",
     border: "none",
     borderRadius: "12px",
