@@ -46,8 +46,8 @@ function AltBrandsModal({ medicine, alternatives, onClose, addToCart, cart }) {
                   key={med.slug}
                   style={{
                     ...modalStyles.row,
-                    background: isOriginal ? "#eff6ff" : "#fff",
-                    border: isOriginal ? "1.5px solid #bfdbfe" : "1.5px solid #f1f5f9",
+                    background: isOriginal ? "#F1F6EF" : "#fff",
+                    border: isOriginal ? "1.5px solid #C7D9C4" : "1.5px solid #f1f5f9",
                   }}
                 >
                   <div style={modalStyles.rowLeft}>
@@ -145,7 +145,7 @@ function MedicineCard({ med, addToCart, cartItem, onCardClick, altCount }) {
   }
 
   return (
-    <div style={styles.card} onClick={() => onCardClick(med)}>
+    <div style={styles.card} className="medicine-card" onClick={() => onCardClick(med)}>
       {/* Alt brands badge */}
       {altCount > 0 && (
         <div style={styles.altBadge}>
@@ -326,28 +326,32 @@ function MedicineList() {
 
   return (
     <div style={styles.container}>
-      <div style={styles.header}>
-        <h2 style={styles.heading}>Our Medicines</h2>
-        <p style={styles.subheading}>Browse from 20,000+ genuine medicines</p>
-        <div style={styles.searchWrapper}>
-          <span style={styles.searchIcon}>🔍</span>
-          <input
-            type="text"
-            placeholder="Search by name, generic or category..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={handleKeyDown}
-            style={styles.input}
-          />
-          {search && (
-            <button style={styles.clearBtn} onClick={handleClear}>✕</button>
+      <div style={styles.header} className="medlist-header">
+        <div style={styles.headerText}>
+          <h2 style={styles.heading}>Our medicines</h2>
+          <p style={styles.subheading}>Browse from 20,000+ genuine medicines</p>
+        </div>
+        <div>
+          <div style={styles.searchWrapper}>
+            <span style={styles.searchIcon}>🔍</span>
+            <input
+              type="text"
+              placeholder="Search by name, generic or category..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleKeyDown}
+              style={styles.input}
+            />
+            {search && (
+              <button style={styles.clearBtn} onClick={handleClear}>✕</button>
+            )}
+          </div>
+          {searchHint && (
+            <p style={{ ...styles.resultCount, color: committed ? "#24512F" : "#94a3b8" }}>
+              {searchHint}
+            </p>
           )}
         </div>
-        {searchHint && (
-          <p style={{ ...styles.resultCount, color: committed ? "#2563eb" : "#94a3b8" }}>
-            {searchHint}
-          </p>
-        )}
       </div>
 
       {invLoading ? (
@@ -390,37 +394,38 @@ function MedicineList() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = {
-  container: { padding: "60px 24px" },
-  header: { textAlign: "center", marginBottom: "40px" },
-  heading: { fontSize: "clamp(26px, 4vw, 36px)", color: "#1e293b", fontWeight: "800", marginBottom: "8px" },
-  subheading: { color: "#64748b", fontSize: "15px", marginBottom: "28px" },
-  searchWrapper: { position: "relative", maxWidth: "500px", margin: "0 auto", display: "flex", alignItems: "center" },
-  searchIcon: { position: "absolute", left: "16px", fontSize: "18px" },
-  input: { width: "100%", padding: "14px 48px", fontSize: "15px", borderRadius: "50px", border: "2px solid #e2e8f0", outline: "none", backgroundColor: "white", boxShadow: "0 4px 16px rgba(0,0,0,0.06)" },
-  clearBtn: { position: "absolute", right: "16px", background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "16px" },
-  resultCount: { marginTop: "10px", fontSize: "13px", fontWeight: "600", transition: "color 0.2s" },
+  container: { padding: "72px 24px", backgroundColor: "#FFFFFF" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "24px", marginBottom: "36px", maxWidth: "1200px", margin: "0 auto 36px" },
+  headerText: { flexShrink: 0 },
+  heading: { fontFamily: "'Space Grotesk', sans-serif", fontSize: "clamp(26px, 4vw, 34px)", color: "#16241A", fontWeight: "700", marginBottom: "6px", letterSpacing: "-0.5px" },
+  subheading: { color: "#5B6B60", fontSize: "15px" },
+  searchWrapper: { position: "relative", width: "380px", maxWidth: "100%", display: "flex", alignItems: "center" },
+  searchIcon: { position: "absolute", left: "16px", fontSize: "16px", opacity: 0.6 },
+  input: { width: "100%", padding: "13px 44px", fontSize: "14px", borderRadius: "12px", border: "1.5px solid #E4ECE0", outline: "none", backgroundColor: "#FAF7F1", transition: "border-color 0.15s" },
+  clearBtn: { position: "absolute", right: "14px", background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "16px" },
+  resultCount: { marginTop: "10px", fontSize: "13px", fontWeight: "600", transition: "color 0.2s", textAlign: "right" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "20px", maxWidth: "1200px", margin: "0 auto" },
   loadingWrap: { textAlign: "center", padding: "60px 20px" },
   loadingText: { fontSize: "18px", color: "#94a3b8" },
   card: {
     position: "relative",
-    backgroundColor: "white",
-    borderRadius: "16px",
+    backgroundColor: "#FFFFFF",
+    borderRadius: "14px",
     padding: "20px",
-    boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-    border: "1px solid #f1f5f9",
+    border: "1px solid #EFEDE5",
+    borderTop: "3px solid #24512F",
     display: "flex",
     flexDirection: "column",
     gap: "8px",
     cursor: "pointer",
-    transition: "box-shadow 0.2s, transform 0.15s",
+    transition: "box-shadow 0.2s ease, transform 0.15s ease",
   },
   altBadge: {
     position: "absolute",
     top: "12px",
     right: "12px",
-    backgroundColor: "#2563eb",
-    color: "white",
+    backgroundColor: "#E8A33D",
+    color: "#16241A",
     fontSize: "10px",
     fontWeight: "700",
     padding: "3px 8px",
@@ -428,48 +433,48 @@ const styles = {
     letterSpacing: "0.3px",
   },
   cardTop: { display: "flex", justifyContent: "space-between", alignItems: "center", paddingRight: "52px" },
-  categoryBadge: { backgroundColor: "#eff6ff", color: "#2563eb", fontSize: "11px", fontWeight: "600", padding: "4px 10px", borderRadius: "50px", textTransform: "uppercase", letterSpacing: "0.5px" },
+  categoryBadge: { backgroundColor: "#E4ECE0", color: "#24512F", fontSize: "11px", fontWeight: "600", padding: "4px 10px", borderRadius: "6px", letterSpacing: "0.2px" },
   emoji: { fontSize: "28px" },
-  name: { fontSize: "16px", fontWeight: "700", color: "#1e293b", marginTop: "4px" },
-  generic: { fontSize: "13px", color: "#64748b" },
-  details: { display: "flex", flexDirection: "column", gap: "4px", padding: "10px 0", borderTop: "1px solid #f1f5f9", borderBottom: "1px solid #f1f5f9" },
+  name: { fontSize: "16px", fontWeight: "700", color: "#16241A", marginTop: "4px" },
+  generic: { fontSize: "13px", color: "#5B6B60" },
+  details: { display: "flex", flexDirection: "column", gap: "4px", padding: "10px 0", borderTop: "1px solid #F5F3EC", borderBottom: "1px solid #F5F3EC" },
   detail: { fontSize: "12px", color: "#94a3b8" },
   cardBottom: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px", paddingTop: "4px" },
-  price: { fontSize: "20px", fontWeight: "800", color: "#1e40af", display: "block" },
+  price: { fontFamily: "'Space Grotesk', sans-serif", fontSize: "20px", fontWeight: "700", color: "#16241A", display: "block" },
   unitPrice: { fontSize: "11px", color: "#94a3b8", margin: "2px 0 0 0" },
-  addBtn: { backgroundColor: "#2563eb", color: "white", border: "none", padding: "10px 20px", borderRadius: "12px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
-  qtyControls: { display: "flex", alignItems: "center", gap: "6px", backgroundColor: "#eff6ff", borderRadius: "12px", padding: "4px" },
-  qtyBtn: { width: "32px", height: "32px", borderRadius: "8px", border: "none", backgroundColor: "#2563eb", color: "white", fontSize: "18px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },
-  qtyNum: { fontSize: "16px", fontWeight: "800", color: "#1e40af", minWidth: "24px", textAlign: "center", cursor: "text", borderBottom: "1px dashed #93c5fd", paddingBottom: "1px" },
-  qtyInput: { width: "40px", textAlign: "center", fontSize: "15px", fontWeight: "800", color: "#1e40af", border: "none", borderBottom: "2px solid #2563eb", backgroundColor: "transparent", outline: "none", MozAppearance: "textfield" },
+  addBtn: { backgroundColor: "#24512F", color: "white", border: "none", padding: "10px 20px", borderRadius: "10px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
+  qtyControls: { display: "flex", alignItems: "center", gap: "6px", backgroundColor: "#E4ECE0", borderRadius: "10px", padding: "4px" },
+  qtyBtn: { width: "32px", height: "32px", borderRadius: "7px", border: "none", backgroundColor: "#24512F", color: "white", fontSize: "18px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },
+  qtyNum: { fontSize: "16px", fontWeight: "700", color: "#16241A", minWidth: "24px", textAlign: "center", cursor: "text", borderBottom: "1px dashed #9BB59B", paddingBottom: "1px" },
+  qtyInput: { width: "40px", textAlign: "center", fontSize: "15px", fontWeight: "700", color: "#16241A", border: "none", borderBottom: "2px solid #24512F", backgroundColor: "transparent", outline: "none", MozAppearance: "textfield" },
   clickHint: { fontSize: "11px", color: "#94a3b8", textAlign: "center", marginTop: "4px" },
   noResult: { textAlign: "center", padding: "60px 20px" },
-  noResultText: { fontSize: "20px", color: "#1e293b", fontWeight: "600", marginBottom: "8px" },
+  noResultText: { fontSize: "20px", color: "#16241A", fontWeight: "600", marginBottom: "8px" },
   noResultSub: { color: "#94a3b8", fontSize: "14px" },
 };
 
 const modalStyles = {
-  overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.55)", zIndex: 4000, display: "flex", justifyContent: "center", alignItems: "center", backdropFilter: "blur(4px)", padding: "20px" },
-  box: { backgroundColor: "white", borderRadius: "24px", width: "100%", maxWidth: "520px", maxHeight: "85vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 24px 80px rgba(0,0,0,0.25)" },
-  header: { background: "linear-gradient(135deg, #1e3a8a, #2563eb)", padding: "22px 24px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexShrink: 0 },
-  headerLabel: { color: "rgba(255,255,255,0.75)", fontSize: "12px", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 4px 0" },
-  headerTitle: { color: "white", fontSize: "18px", fontWeight: "800", margin: 0 },
+  overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(20,29,22,0.55)", zIndex: 4000, display: "flex", justifyContent: "center", alignItems: "center", backdropFilter: "blur(4px)", padding: "20px" },
+  box: { backgroundColor: "white", borderRadius: "20px", width: "100%", maxWidth: "520px", maxHeight: "85vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 24px 80px rgba(0,0,0,0.25)" },
+  header: { background: "linear-gradient(135deg, #14291A, #24512F)", padding: "22px 24px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexShrink: 0 },
+  headerLabel: { color: "rgba(255,255,255,0.7)", fontSize: "12px", fontWeight: "600", letterSpacing: "0.4px", margin: "0 0 4px 0" },
+  headerTitle: { fontFamily: "'Space Grotesk', sans-serif", color: "white", fontSize: "18px", fontWeight: "700", margin: 0 },
   headerSub: { color: "rgba(255,255,255,0.7)", fontSize: "13px", margin: "4px 0 0 0" },
-  closeBtn: { background: "rgba(255,255,255,0.2)", border: "none", color: "white", borderRadius: "50%", width: "32px", height: "32px", fontSize: "16px", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" },
+  closeBtn: { background: "rgba(255,255,255,0.15)", border: "none", color: "white", borderRadius: "50%", width: "32px", height: "32px", fontSize: "16px", cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" },
   list: { overflowY: "auto", flex: 1, padding: "16px", display: "flex", flexDirection: "column", gap: "10px" },
   empty: { textAlign: "center", padding: "40px 20px" },
-  row: { display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "14px", padding: "14px", gap: "12px" },
+  row: { display: "flex", justifyContent: "space-between", alignItems: "center", borderRadius: "12px", padding: "14px", gap: "12px" },
   rowLeft: { display: "flex", alignItems: "center", gap: "12px", flex: 1, minWidth: 0 },
   rowEmoji: { fontSize: "28px", flexShrink: 0 },
-  rowName: { fontWeight: "700", fontSize: "14px", color: "#1e293b", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" },
-  originalBadge: { backgroundColor: "#2563eb", color: "white", fontSize: "10px", fontWeight: "700", padding: "2px 7px", borderRadius: "20px" },
+  rowName: { fontWeight: "700", fontSize: "14px", color: "#16241A", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" },
+  originalBadge: { backgroundColor: "#E8A33D", color: "#16241A", fontSize: "10px", fontWeight: "700", padding: "2px 7px", borderRadius: "20px" },
   rowMeta: { fontSize: "12px", color: "#94a3b8", marginTop: "2px" },
   rowRight: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "6px", flexShrink: 0 },
-  rowPrice: { fontWeight: "800", fontSize: "16px", color: "#1e40af" },
-  addBtn: { backgroundColor: "#2563eb", color: "white", border: "none", padding: "7px 14px", borderRadius: "10px", fontSize: "13px", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" },
-  qtyRow: { display: "flex", alignItems: "center", gap: "6px", backgroundColor: "#eff6ff", borderRadius: "10px", padding: "3px" },
-  qtyBtn: { width: "28px", height: "28px", borderRadius: "7px", border: "none", backgroundColor: "#2563eb", color: "white", fontSize: "16px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },
-  qtyNum: { fontSize: "14px", fontWeight: "800", color: "#1e40af", minWidth: "20px", textAlign: "center" },
+  rowPrice: { fontFamily: "'Space Grotesk', sans-serif", fontWeight: "700", fontSize: "16px", color: "#16241A" },
+  addBtn: { backgroundColor: "#24512F", color: "white", border: "none", padding: "7px 14px", borderRadius: "9px", fontSize: "13px", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" },
+  qtyRow: { display: "flex", alignItems: "center", gap: "6px", backgroundColor: "#E4ECE0", borderRadius: "9px", padding: "3px" },
+  qtyBtn: { width: "28px", height: "28px", borderRadius: "6px", border: "none", backgroundColor: "#24512F", color: "white", fontSize: "16px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" },
+  qtyNum: { fontSize: "14px", fontWeight: "700", color: "#16241A", minWidth: "20px", textAlign: "center" },
 };
 
 export default MedicineList;

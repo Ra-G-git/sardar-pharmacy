@@ -7,7 +7,7 @@ import "./App.css";
 function App() {
   return (
     <CartProvider>
-      <div style={{ backgroundColor: "#f8fafc", minHeight: "100vh" }}>
+      <div style={{ backgroundColor: "#FAF7F1", minHeight: "100vh" }}>
         <Navbar />
         <div id="home">
           <Hero />
@@ -15,86 +15,143 @@ function App() {
         <div id="medicines">
           <MedicineList />
         </div>
-        <div id="contact" style={{
-          background: "linear-gradient(135deg, #14291a 0%, #24512F 55%, #3d8b52 100%)",
-          padding: "60px 24px",
-          textAlign: "center",
-          position: "relative",
-          overflow: "hidden",
-        }}>
-          <div style={{
-            position: "relative",
-            zIndex: 1,
-            maxWidth: "700px",
-            margin: "0 auto",
-          }}>
-            <div style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "10px",
-              backgroundColor: "rgba(255,255,255,0.15)",
-              color: "white",
-              padding: "8px 20px",
-              borderRadius: "50px",
-              fontSize: "14px",
-              fontWeight: "500",
-              marginBottom: "24px",
-              backdropFilter: "blur(10px)",
-              border: "1px solid rgba(255,255,255,0.2)",
-            }}>
-              <img src="/logo.svg" alt="" style={{ height: "32px", width: "auto" }} />
-              Sardar Pharmacy
+        <div id="contact" style={styles.contact}>
+          <div style={styles.watermark}>
+            <div style={styles.watermarkV} />
+            <div style={styles.watermarkH} />
+          </div>
+
+          <div style={styles.contactInner}>
+            <div style={styles.contactHead}>
+              <img src="/logo.svg" alt="Sardar Pharmacy" style={styles.contactLogo} />
+              <div>
+                <h2 style={styles.contactTitle}>Sardar Pharmacy</h2>
+                <p style={styles.contactTag}>Mirpur's trusted neighbourhood pharmacy</p>
+              </div>
             </div>
 
-            <div style={{
-              display: "flex",
-              flexWrap: "wrap",
-              justifyContent: "center",
-              gap: "16px",
-              marginBottom: "32px",
-            }}>
-              <span style={{
-                color: "rgba(255,255,255,0.75)",
-                fontSize: "13px",
-                backgroundColor: "rgba(255,255,255,0.1)",
-                padding: "6px 14px",
-                borderRadius: "50px",
-              }}>📍 10/1, Pallabi, Dhaka-1216</span>
-
-              <span style={{
-                color: "rgba(255,255,255,0.75)",
-                fontSize: "13px",
-                backgroundColor: "rgba(255,255,255,0.1)",
-                padding: "6px 14px",
-                borderRadius: "50px",
-              }}>📞 01559084327</span>
-
-              <span style={{
-                color: "rgba(255,255,255,0.75)",
-                fontSize: "13px",
-                backgroundColor: "rgba(255,255,255,0.1)",
-                padding: "6px 14px",
-                borderRadius: "50px",
-              }}>🕐 Open 10:00 AM – 11:50 PM</span>
+            <div style={styles.contactGrid} className="contact-grid">
+              <div style={styles.contactCol}>
+                <span style={styles.contactLabel}>Visit us</span>
+                <span style={styles.contactValue}>10/1, Pallabi, Dhaka-1216</span>
+              </div>
+              <div style={styles.contactCol}>
+                <span style={styles.contactLabel}>Call us</span>
+                <span style={styles.contactValue}>01559084327</span>
+              </div>
+              <div style={styles.contactCol}>
+                <span style={styles.contactLabel}>Hours</span>
+                <span style={styles.contactValue}>10:00 AM – 11:50 PM, daily</span>
+              </div>
             </div>
 
-            <div style={{
-              width: "100%",
-              height: "1px",
-              backgroundColor: "rgba(255,255,255,0.15)",
-              marginBottom: "24px",
-            }} />
+            <div style={styles.contactDivider} />
 
-            <p style={{
-              color: "rgba(255,255,255,0.4)",
-              fontSize: "13px",
-              margin: 0,
-            }}>© 2026 Sardar Pharmacy. All rights reserved.</p>
+            <p style={styles.copyright}>© 2026 Sardar Pharmacy. All rights reserved.</p>
           </div>
         </div>
       </div>
     </CartProvider>
   );
 }
+
+const styles = {
+  contact: {
+    background: "linear-gradient(160deg, #14291A 0%, #24512F 100%)",
+    padding: "72px 24px 40px",
+    position: "relative",
+    overflow: "hidden",
+  },
+  watermark: {
+    position: "absolute",
+    top: "-10%",
+    right: "-6%",
+    width: "340px",
+    height: "340px",
+    opacity: 0.06,
+    pointerEvents: "none",
+  },
+  watermarkV: {
+    position: "absolute",
+    left: "50%",
+    top: "10%",
+    bottom: "10%",
+    width: "26%",
+    transform: "translateX(-50%)",
+    borderRadius: "20px",
+    backgroundColor: "#ffffff",
+  },
+  watermarkH: {
+    position: "absolute",
+    top: "50%",
+    left: "10%",
+    right: "10%",
+    height: "26%",
+    transform: "translateY(-50%)",
+    borderRadius: "20px",
+    backgroundColor: "#ffffff",
+  },
+  contactInner: {
+    position: "relative",
+    zIndex: 1,
+    maxWidth: "760px",
+    margin: "0 auto",
+  },
+  contactHead: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    marginBottom: "40px",
+  },
+  contactLogo: {
+    height: "44px",
+    width: "auto",
+  },
+  contactTitle: {
+    fontFamily: "'Space Grotesk', sans-serif",
+    color: "white",
+    fontSize: "22px",
+    fontWeight: "700",
+    margin: 0,
+  },
+  contactTag: {
+    color: "rgba(255,255,255,0.6)",
+    fontSize: "13px",
+    margin: "2px 0 0 0",
+  },
+  contactGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, minmax(160px, 1fr))",
+    gap: "24px",
+    borderTop: "1px solid rgba(255,255,255,0.12)",
+    paddingTop: "32px",
+  },
+  contactCol: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+  },
+  contactLabel: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: "12px",
+    fontWeight: "600",
+  },
+  contactValue: {
+    color: "white",
+    fontSize: "15px",
+    fontWeight: "500",
+  },
+  contactDivider: {
+    width: "100%",
+    height: "1px",
+    backgroundColor: "rgba(255,255,255,0.12)",
+    margin: "36px 0 20px",
+  },
+  copyright: {
+    color: "rgba(255,255,255,0.4)",
+    fontSize: "13px",
+    margin: 0,
+  },
+};
 
 export default App;

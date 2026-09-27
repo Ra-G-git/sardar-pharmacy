@@ -6,17 +6,24 @@
 
 body {
   font-family: 'Inter', sans-serif;
-  background-color: #f8fafc;
-  color: #1e293b;
+  background-color: #FAF7F1;
+  color: #16241A;
   overflow-x: hidden;
 }
 
 h1, h2, h3 {
-  font-family: 'Poppins', sans-serif;
+  font-family: 'Space Grotesk', sans-serif;
 }
 
 button {
   font-family: 'Inter', sans-serif;
+}
+
+button:focus-visible,
+input:focus-visible,
+a:focus-visible {
+  outline: 2px solid #E8A33D;
+  outline-offset: 2px;
 }
 
 .hamburger {
@@ -30,12 +37,6 @@ button {
   border-radius: 6px;
 }
 
-@media (max-width: 768px) {
-  .hamburger {
-    display: block;
-  }
-}
-
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -45,18 +46,32 @@ button {
   animation: fadeIn 0.5s ease forwards;
 }
 
+@keyframes heroRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-copy,
+  .hero-visual,
+  .fade-in {
+    animation: none !important;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f5f9;
+  background: #F5F3EC;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2563eb;
+  background: #24512F;
   border-radius: 10px;
 }
+
 .desktop-nav {
   display: flex;
   align-items: center;
@@ -82,8 +97,44 @@ button {
   }
 }
 
-@media (min-width: 769px) {
-  .hamburger {
-    display: none;
+/* ── Hero responsiveness ────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .hero-grid {
+    grid-template-columns: 1fr !important;
   }
+  .hero-visual {
+    order: -1;
+  }
+  .cross-wrap {
+    width: 240px !important;
+    margin: 0 auto 12px;
+  }
+}
+
+/* ── Medicine list header responsiveness ───────────────────────────── */
+@media (max-width: 700px) {
+  .medlist-header {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  .medlist-header > div:last-child {
+    width: 100%;
+  }
+  .medlist-header input {
+    width: 100% !important;
+  }
+}
+
+/* ── Contact section responsiveness ────────────────────────────────── */
+@media (max-width: 640px) {
+  .contact-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+}
+
+/* ── Medicine card hover (single, deliberate motion) ───────────────── */
+.medicine-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(22, 36, 26, 0.1);
 }
