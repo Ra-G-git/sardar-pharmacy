@@ -1120,6 +1120,31 @@
       }
 
       const salesDate = document.getElementById('sales-date').value;
+
+      // If the customer field has typed text that was never turned into a
+      // selected or newly-created customer (user typed a name/phone but
+      // never clicked a match or "Add new"), auto-create that customer now
+      // instead of silently losing it as "Walk-in Customer".
+      if (!this.selectedCustomer) {
+        const typedCustomer = document.getElementById('search-customer').value.trim();
+        if (typedCustomer) {
+          const isPhoneLike = /^[\d+\-\s()]+$/.test(typedCustomer);
+          try {
+            const autoCust = await S.add('customers', {
+              name: typedCustomer,
+              phone: isPhoneLike ? typedCustomer : '',
+              label: '',
+              customDiscount: 0,
+              email: '',
+              address: ''
+            });
+            this.selectCustomer(autoCust);
+          } catch (err) {
+            console.error('Failed to auto-add customer from typed field:', err);
+          }
+        }
+      }
+
       const { subtotal, discountAmount, taxPercent, taxAmount, grandTotal } = this.calculateTotals();
       const discType = document.getElementById('discount-type').value;
       const discVal = parseFloat(document.getElementById('discount-value').value) || 0;

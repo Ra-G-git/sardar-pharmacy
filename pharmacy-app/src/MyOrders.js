@@ -31,7 +31,7 @@ function MyOrders({ onClose }) {
   function getStatusColor(status) {
     switch (status) {
       case "delivered": return { bg: "#f0fdf4", color: "#16a34a" };
-      case "processing": return { bg: "#eff6ff", color: "#2563eb" };
+      case "processing": return { bg: "#E4ECE0", color: "#24512F" };
       case "cancelled": return { bg: "#fef2f2", color: "#dc2626" };
       default: return { bg: "#fffbeb", color: "#d97706" };
     }
@@ -241,7 +241,7 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "24px 28px",
-    background: "linear-gradient(135deg, #1e3a8a, #2563eb)",
+    background: "linear-gradient(135deg, #14291A, #24512F)",
   },
   title: { color: "white", fontSize: "22px", fontWeight: "800", margin: 0 },
   subtitle: { color: "rgba(255,255,255,0.75)", fontSize: "13px", margin: "4px 0 0 0" },
@@ -261,30 +261,30 @@ const styles = {
   body: { padding: "20px", overflowY: "auto", flex: 1 },
   empty: { textAlign: "center", padding: "60px 20px" },
   emptyIcon: { fontSize: "56px", marginBottom: "16px" },
-  emptyText: { fontSize: "18px", fontWeight: "700", color: "#1e293b", marginBottom: "8px" },
-  emptySub: { fontSize: "14px", color: "#94a3b8" },
+  emptyText: { fontSize: "18px", fontWeight: "700", color: "#16241A", marginBottom: "8px" },
+  emptySub: { fontSize: "14px", color: "#8CA090" },
   card: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#FAF7F1",
     borderRadius: "16px",
     padding: "18px",
     marginBottom: "14px",
-    border: "1px solid #e2e8f0",
+    border: "1px solid #E1E4DC",
   },
   cardHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" },
-  orderId: { fontWeight: "800", color: "#1e293b", fontSize: "15px", margin: "0 0 4px 0" },
-  orderDate: { fontSize: "12px", color: "#94a3b8", margin: 0 },
+  orderId: { fontWeight: "800", color: "#16241A", fontSize: "15px", margin: "0 0 4px 0" },
+  orderDate: { fontSize: "12px", color: "#8CA090", margin: 0 },
   statusBadge: { padding: "6px 12px", borderRadius: "50px", fontSize: "12px", fontWeight: "700", textTransform: "capitalize" },
   itemsList: {
     backgroundColor: "white",
     borderRadius: "12px",
     padding: "12px",
     marginBottom: "14px",
-    border: "1px solid #f1f5f9",
+    border: "1px solid #F5F3EC",
   },
-  item: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #f8fafc" },
-  itemName: { fontSize: "13px", color: "#1e293b", flex: 1, fontWeight: "500" },
-  itemQty: { fontSize: "13px", color: "#64748b", margin: "0 12px" },
-  itemPrice: { fontSize: "13px", color: "#2563eb", fontWeight: "700" },
+  item: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid #FAF7F1" },
+  itemName: { fontSize: "13px", color: "#16241A", flex: 1, fontWeight: "500" },
+  itemQty: { fontSize: "13px", color: "#5B6B60", margin: "0 12px" },
+  itemPrice: { fontSize: "13px", color: "#24512F", fontWeight: "700" },
   // Prescription styles
   prescSection: {
     backgroundColor: "#f0fdf4",
@@ -300,7 +300,7 @@ const styles = {
     marginTop: "10px",
     border: "1px solid #fde68a",
   },
-  prescLabel: { fontSize: "12px", fontWeight: "700", color: "#374151", margin: "0 0 10px 0" },
+  prescLabel: { fontSize: "12px", fontWeight: "700", color: "#3A4A3B", margin: "0 0 10px 0" },
   prescRow: { display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "flex-start" },
   prescThumbWrap: { position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" },
   prescThumb: {
@@ -308,7 +308,7 @@ const styles = {
     height: "64px",
     objectFit: "cover",
     borderRadius: "10px",
-    border: "2px solid #e2e8f0",
+    border: "2px solid #E1E4DC",
     cursor: "zoom-in",
   },
   prescStatusDot: {
@@ -320,16 +320,16 @@ const styles = {
     borderRadius: "50%",
     border: "2px solid white",
   },
-  prescDate: { fontSize: "10px", color: "#94a3b8", margin: 0, textAlign: "center" },
+  prescDate: { fontSize: "10px", color: "#8CA090", margin: 0, textAlign: "center" },
   cardFooter: { display: "flex", justifyContent: "space-between", alignItems: "flex-end" },
   deliveryInfo: { flex: 1 },
-  deliveryText: { fontSize: "12px", color: "#64748b", margin: "3px 0" },
+  deliveryText: { fontSize: "12px", color: "#5B6B60", margin: "3px 0" },
   totalBox: { textAlign: "right" },
-  totalLabel: { fontSize: "11px", color: "#94a3b8", margin: "0 0 2px 0", textTransform: "uppercase", fontWeight: "600" },
-  totalAmt: { fontSize: "22px", fontWeight: "800", color: "#1e40af", margin: 0 },
+  totalLabel: { fontSize: "11px", color: "#8CA090", margin: "0 0 2px 0", textTransform: "uppercase", fontWeight: "600" },
+  totalAmt: { fontSize: "22px", fontWeight: "800", color: "#24512F", margin: 0 },
   receiptBtns: { display: "flex", gap: "8px", marginTop: "12px", flexWrap: "wrap" },
-  printBtn: { padding: "8px 16px", backgroundColor: "#1e293b", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
-  downloadBtn: { padding: "8px 16px", backgroundColor: "#1e40af", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
+  printBtn: { padding: "8px 16px", backgroundColor: "#16241A", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
+  downloadBtn: { padding: "8px 16px", backgroundColor: "#24512F", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
   morePrescBtn: { padding: "8px 16px", backgroundColor: "#f0fdf4", color: "#16a34a", border: "1px solid #bbf7d0", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
   lightbox: {
     position: "fixed",

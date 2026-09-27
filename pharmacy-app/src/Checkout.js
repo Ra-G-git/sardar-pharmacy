@@ -58,7 +58,7 @@ function AltBrandSelector({ item, allMedicines, altPref, onAltPrefChange }) {
             onClick={handleToggle}
             style={{
               ...altStyles.toggleBtn,
-              background: isAllowed ? "#2563eb" : "#e2e8f0",
+              background: isAllowed ? "#24512F" : "#E1E4DC",
             }}
           >
             <div
@@ -393,9 +393,9 @@ function Checkout({ onClose }) {
                 onClick={() => setPaymentMethod(method.id)}
                 style={{
                   ...styles.paymentBtn,
-                  backgroundColor: paymentMethod === method.id ? "#1e40af" : "#f1f5f9",
-                  color: paymentMethod === method.id ? "white" : "#1e293b",
-                  border: paymentMethod === method.id ? "2px solid #1e40af" : "2px solid transparent",
+                  backgroundColor: paymentMethod === method.id ? "#24512F" : "#F5F3EC",
+                  color: paymentMethod === method.id ? "white" : "#16241A",
+                  border: paymentMethod === method.id ? "2px solid #24512F" : "2px solid transparent",
                 }}
               >
                 {method.label}
@@ -423,10 +423,10 @@ function Checkout({ onClose }) {
 const altStyles = {
   wrap: {
     marginTop: "6px",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#FAF7F1",
     borderRadius: "10px",
     padding: "10px 12px",
-    border: "1px solid #e2e8f0",
+    border: "1px solid #E1E4DC",
   },
   toggleRow: {
     display: "flex",
@@ -462,12 +462,12 @@ const altStyles = {
   },
   toggleLabel: {
     fontSize: "12px",
-    color: "#374151",
+    color: "#3A4A3B",
     fontWeight: "500",
   },
   altCount: {
     fontSize: "11px",
-    color: "#94a3b8",
+    color: "#8CA090",
     flexShrink: 0,
   },
   dropdownWrap: {
@@ -479,7 +479,7 @@ const altStyles = {
   dropdownLabel: {
     fontSize: "11px",
     fontWeight: "600",
-    color: "#64748b",
+    color: "#5B6B60",
     textTransform: "uppercase",
     letterSpacing: "0.5px",
   },
@@ -487,10 +487,10 @@ const altStyles = {
     width: "100%",
     padding: "9px 12px",
     borderRadius: "8px",
-    border: "1.5px solid #bfdbfe",
+    border: "1.5px solid #C7D9C4",
     backgroundColor: "white",
     fontSize: "13px",
-    color: "#1e293b",
+    color: "#16241A",
     outline: "none",
     cursor: "pointer",
   },
@@ -498,10 +498,10 @@ const altStyles = {
     display: "flex",
     alignItems: "flex-start",
     gap: "8px",
-    backgroundColor: "#eff6ff",
+    backgroundColor: "#E4ECE0",
     borderRadius: "8px",
     padding: "8px 10px",
-    border: "1px solid #bfdbfe",
+    border: "1px solid #C7D9C4",
   },
   preferredIcon: {
     fontSize: "14px",
@@ -510,11 +510,11 @@ const altStyles = {
   preferredName: {
     fontWeight: "700",
     fontSize: "13px",
-    color: "#1e40af",
+    color: "#24512F",
   },
   preferredMeta: {
     fontSize: "11px",
-    color: "#64748b",
+    color: "#5B6B60",
     marginTop: "2px",
   },
 };
@@ -549,7 +549,7 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "center",
     padding: "24px 28px",
-    background: "linear-gradient(135deg, #1e3a8a, #2563eb)",
+    background: "linear-gradient(135deg, #14291A, #24512F)",
   },
   title: { color: "white", fontSize: "22px", fontWeight: "800", margin: 0 },
   subtitle: { color: "rgba(255,255,255,0.75)", fontSize: "13px", margin: "4px 0 0 0" },
@@ -568,13 +568,13 @@ const styles = {
   },
   body: { padding: "24px 28px", overflowY: "auto", flex: 1 },
   orderSummary: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#FAF7F1",
     borderRadius: "16px",
     padding: "16px",
     marginBottom: "24px",
-    border: "1px solid #e2e8f0",
+    border: "1px solid #E1E4DC",
   },
-  sectionTitle: { fontSize: "15px", fontWeight: "700", color: "#1e293b", marginBottom: "14px" },
+  sectionTitle: { fontSize: "15px", fontWeight: "700", color: "#16241A", marginBottom: "14px" },
   summaryItemWrap: {
     marginBottom: "10px",
   },
@@ -582,27 +582,27 @@ const styles = {
     display: "flex",
     justifyContent: "space-between",
     fontSize: "13px",
-    color: "#64748b",
+    color: "#5B6B60",
   },
   summaryName: { flex: 1 },
-  summaryPrice: { fontWeight: "600", color: "#1e293b" },
+  summaryPrice: { fontWeight: "600", color: "#16241A" },
   summaryTotal: {
     display: "flex",
     justifyContent: "space-between",
-    borderTop: "1px solid #e2e8f0",
+    borderTop: "1px solid #E1E4DC",
     paddingTop: "12px",
     marginTop: "8px",
     fontSize: "15px",
-    color: "#1e293b",
+    color: "#16241A",
   },
-  totalAmt: { color: "#1e40af", fontSize: "18px" },
+  totalAmt: { color: "#24512F", fontSize: "18px" },
   inputGroup: { marginBottom: "16px" },
-  label: { display: "block", fontSize: "13px", fontWeight: "600", color: "#374151", marginBottom: "8px" },
+  label: { display: "block", fontSize: "13px", fontWeight: "600", color: "#3A4A3B", marginBottom: "8px" },
   input: {
     width: "100%",
     padding: "13px 16px",
     borderRadius: "12px",
-    border: "2px solid #e2e8f0",
+    border: "2px solid #E1E4DC",
     fontSize: "15px",
     outline: "none",
     boxSizing: "border-box",
@@ -611,7 +611,7 @@ const styles = {
     width: "100%",
     padding: "13px 16px",
     borderRadius: "12px",
-    border: "2px solid #e2e8f0",
+    border: "2px solid #E1E4DC",
     fontSize: "15px",
     outline: "none",
     boxSizing: "border-box",
@@ -632,7 +632,7 @@ const styles = {
   },
   prescSubtitle: {
     fontSize: "12px",
-    color: "#64748b",
+    color: "#5B6B60",
     margin: "4px 0 0 0",
   },
   addPrescBtn: {
@@ -717,7 +717,7 @@ const styles = {
   orderBtn: {
     width: "100%",
     padding: "15px",
-    background: "linear-gradient(135deg, #1e40af, #2563eb)",
+    background: "linear-gradient(135deg, #24512F, #24512F)",
     color: "white",
     border: "none",
     borderRadius: "12px",
@@ -735,11 +735,11 @@ const styles = {
     boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
   },
   successIcon: { fontSize: "64px", marginBottom: "16px" },
-  successTitle: { fontSize: "28px", fontWeight: "800", color: "#1e293b", marginBottom: "12px" },
-  successText: { color: "#64748b", fontSize: "15px", lineHeight: "1.6", marginBottom: "28px" },
+  successTitle: { fontSize: "28px", fontWeight: "800", color: "#16241A", marginBottom: "12px" },
+  successText: { color: "#5B6B60", fontSize: "15px", lineHeight: "1.6", marginBottom: "28px" },
   successBtn: {
     padding: "14px 32px",
-    background: "linear-gradient(135deg, #1e40af, #2563eb)",
+    background: "linear-gradient(135deg, #24512F, #24512F)",
     color: "white",
     border: "none",
     borderRadius: "12px",
@@ -749,8 +749,8 @@ const styles = {
     boxShadow: "0 4px 14px rgba(37,99,235,0.35)",
   },
   receiptButtons: { display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center", marginBottom: "16px" },
-  printBtn: { padding: "12px 18px", backgroundColor: "#1e293b", color: "white", border: "none", borderRadius: "12px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
-  downloadBtn: { padding: "12px 18px", backgroundColor: "#1e40af", color: "white", border: "none", borderRadius: "12px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
+  printBtn: { padding: "12px 18px", backgroundColor: "#16241A", color: "white", border: "none", borderRadius: "12px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
+  downloadBtn: { padding: "12px 18px", backgroundColor: "#24512F", color: "white", border: "none", borderRadius: "12px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
   whatsappBtn: { padding: "12px 18px", backgroundColor: "#16a34a", color: "white", border: "none", borderRadius: "12px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
 };
 

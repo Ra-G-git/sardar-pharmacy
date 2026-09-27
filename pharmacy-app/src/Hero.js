@@ -4,13 +4,14 @@ function Hero() {
       <div style={styles.grid} className="hero-grid">
         <div style={styles.copy} className="hero-copy">
           <h1 style={styles.title}>
-            Your health,
+            Care that goes
             <br />
-            sorted.
+            beyond medicine.
           </h1>
           <p style={styles.subtitle}>
-            Genuine medicines, sourced and stocked right in Mirpur — delivered
-            fast, priced fair, and always in stock when you need them.
+            We're your neighbourhood pharmacy in Mirpur — here to help you
+            find the right medicine, answer questions, and look out for your
+            family's health, not just fill a prescription.
           </p>
           <div style={styles.buttons}>
             <button

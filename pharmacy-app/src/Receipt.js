@@ -282,7 +282,7 @@ export function printReceipt(order) {
       padding: 13px 36px;
       font-size: 15px;
       font-weight: 700;
-      background: #1e40af;
+      background: #24512F;
       color: white;
       border: none;
       border-radius: 10px;

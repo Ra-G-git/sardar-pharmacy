@@ -92,8 +92,8 @@ const styles = {
     justifyContent: "space-between",
     alignItems: "flex-start",
     padding: "24px",
-    borderBottom: "1px solid #f1f5f9",
-    background: "linear-gradient(135deg, #1e40af, #2563eb)",
+    borderBottom: "1px solid #F5F3EC",
+    background: "linear-gradient(135deg, #24512F, #24512F)",
   },
   title: {
     fontSize: "22px",
@@ -134,12 +134,12 @@ const styles = {
   emptyText: {
     fontSize: "20px",
     fontWeight: "700",
-    color: "#1e293b",
+    color: "#16241A",
     marginBottom: "8px",
   },
   emptySub: {
     fontSize: "14px",
-    color: "#94a3b8",
+    color: "#8CA090",
   },
   items: {
     flex: 1,
@@ -152,13 +152,13 @@ const styles = {
     alignItems: "flex-start",
     padding: "16px",
     borderRadius: "12px",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#FAF7F1",
     marginBottom: "10px",
-    border: "1px solid #f1f5f9",
+    border: "1px solid #F5F3EC",
   },
   itemIcon: {
     fontSize: "28px",
-    backgroundColor: "#eff6ff",
+    backgroundColor: "#E4ECE0",
     borderRadius: "10px",
     padding: "8px",
     minWidth: "44px",
@@ -169,18 +169,18 @@ const styles = {
   },
   itemName: {
     fontWeight: "700",
-    color: "#1e293b",
+    color: "#16241A",
     fontSize: "15px",
     margin: "0 0 4px 0",
   },
   itemDetail: {
     fontSize: "12px",
-    color: "#64748b",
+    color: "#5B6B60",
     margin: "0 0 6px 0",
   },
   itemPrice: {
     fontSize: "13px",
-    color: "#2563eb",
+    color: "#24512F",
     margin: 0,
   },
   removeBtn: {
@@ -193,7 +193,7 @@ const styles = {
   },
   footer: {
     padding: "20px",
-    borderTop: "1px solid #f1f5f9",
+    borderTop: "1px solid #F5F3EC",
     backgroundColor: "white",
   },
   totalRow: {
@@ -202,18 +202,18 @@ const styles = {
     alignItems: "center",
     marginBottom: "16px",
     padding: "12px 16px",
-    backgroundColor: "#f8fafc",
+    backgroundColor: "#FAF7F1",
     borderRadius: "12px",
   },
   totalLabel: {
     fontSize: "16px",
     fontWeight: "600",
-    color: "#64748b",
+    color: "#5B6B60",
   },
   totalAmount: {
     fontSize: "24px",
     fontWeight: "800",
-    color: "#1e40af",
+    color: "#24512F",
   },
   clearBtn: {
     width: "100%",
@@ -230,7 +230,7 @@ const styles = {
   checkoutBtn: {
     width: "100%",
     padding: "14px",
-    background: "linear-gradient(135deg, #1e40af, #2563eb)",
+    background: "linear-gradient(135deg, #24512F, #24512F)",
     color: "white",
     border: "none",
     borderRadius: "12px",
