@@ -27,6 +27,17 @@ function Navbar() {
   }, []);
 
   useEffect(() => {
+    const openRx = () => setPrescriptionOpen(true);
+    const openOrders = () => setOrdersOpen(true);
+    window.addEventListener("open-prescription", openRx);
+    window.addEventListener("open-orders", openOrders);
+    return () => {
+      window.removeEventListener("open-prescription", openRx);
+      window.removeEventListener("open-orders", openOrders);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);

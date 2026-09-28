@@ -2,16 +2,35 @@ import Navbar from "./Navbar";
 import Hero from "./Hero";
 import MedicineList from "./MedicineList";
 import { CartProvider } from "./CartContext";
+import Services from "./Services";
+import Reveal from "./Reveal";
+import { useEffect, useState } from "react";
 import "./App.css";
+
+function ScrollProgress() {
+  const [p, setP] = useState(0);
+  useEffect(() => {
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      setP(max > 0 ? window.scrollY / max : 0);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  return <div style={{ position: "fixed", top: 0, left: 0, height: "3px", width: "100%", background: "#E8A33D", transformOrigin: "left", transform: `scaleX(${p})`, zIndex: 6000, pointerEvents: "none" }} />;
+}
 
 function App() {
   return (
     <CartProvider>
       <div style={{ backgroundColor: "#FAF7F1", minHeight: "100vh" }}>
+        <ScrollProgress />
         <Navbar />
         <div id="home">
           <Hero />
         </div>
+        <Services />
         <div id="medicines">
           <MedicineList />
         </div>
@@ -22,6 +41,7 @@ function App() {
           </div>
 
           <div style={styles.contactInner}>
+            <Reveal>
             <div style={styles.contactHead}>
               <img src="/logo.svg" alt="Sardar Pharmacy" style={styles.contactLogo} />
               <div>
@@ -29,7 +49,9 @@ function App() {
                 <p style={styles.contactTag}>Caring for Mirpur's health, beyond the counter</p>
               </div>
             </div>
+            </Reveal>
 
+            <Reveal delay={120}>
             <div style={styles.contactGrid} className="contact-grid">
               <div style={styles.contactCol}>
                 <span style={styles.contactLabel}>Visit us</span>
@@ -44,6 +66,8 @@ function App() {
                 <span style={styles.contactValue}>10:00 AM – 11:50 PM, daily</span>
               </div>
             </div>
+
+            </Reveal>
 
             <div style={styles.contactDivider} />
 

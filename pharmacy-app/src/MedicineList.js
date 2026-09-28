@@ -1,3 +1,4 @@
+import Reveal from "./Reveal";
 import { useState, useEffect, useMemo } from "react";
 import Papa from "papaparse";
 import { db } from "./firebase";
@@ -366,14 +367,15 @@ function MedicineList() {
       ) : (
         <div style={styles.grid}>
           {displayed.map((med, index) => (
-            <MedicineCard
-              key={med.slug || index}
-              med={med}
-              addToCart={addToCart}
-              cartItem={getCartItem(med)}
-              onCardClick={handleCardClick}
-              altCount={getAlternatives(med).length}
-            />
+            <Reveal key={med.slug || index} delay={(index % 4) * 70} style={{ height: "100%" }}>
+              <MedicineCard
+                med={med}
+                addToCart={addToCart}
+                cartItem={getCartItem(med)}
+                onCardClick={handleCardClick}
+                altCount={getAlternatives(med).length}
+              />
+            </Reveal>
           ))}
         </div>
       )}
@@ -418,6 +420,7 @@ const styles = {
     flexDirection: "column",
     gap: "8px",
     cursor: "pointer",
+    height: "100%",
     transition: "box-shadow 0.2s ease, transform 0.15s ease",
   },
   altBadge: {

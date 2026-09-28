@@ -1,4 +1,29 @@
+import { useEffect, useState } from "react";
+
+function useCountUp(target, duration = 1600, startDelay = 500) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) { setValue(target); return; }
+    let raf;
+    const timer = setTimeout(() => {
+      const start = performance.now();
+      const tick = (now) => {
+        const p = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        setValue(Math.round(target * eased));
+        if (p < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    }, startDelay);
+    return () => { clearTimeout(timer); cancelAnimationFrame(raf); };
+  }, [target, duration, startDelay]);
+  return value;
+}
+
 function Hero() {
+  const meds = useCountUp(20000);
+  const genuine = useCountUp(100, 1400);
   return (
     <div style={styles.hero}>
       <div style={styles.grid} className="hero-grid">
@@ -15,12 +40,14 @@ function Hero() {
           </p>
           <div style={styles.buttons}>
             <button
+              className="btn-primary"
               style={styles.primaryBtn}
               onClick={() => document.getElementById("medicines").scrollIntoView({ behavior: "smooth" })}
             >
               Browse medicines
             </button>
             <button
+              className="btn-secondary"
               style={styles.secondaryBtn}
               onClick={() => document.getElementById("contact").scrollIntoView({ behavior: "smooth" })}
             >
@@ -38,21 +65,21 @@ function Hero() {
 
         <div style={styles.visual} className="hero-visual">
           <div style={styles.crossWrap} className="cross-wrap">
-            <div style={styles.crossBlob} />
-            <div style={styles.cross}>
+            <div style={styles.crossBlob} className="blob-morph" />
+            <div style={styles.cross} className="cross-float">
               <div style={styles.crossV} />
               <div style={styles.crossH} />
             </div>
-            <div style={{ ...styles.chip, ...styles.chipTop }}>
-              <span style={styles.chipNum}>20,000+</span>
+            <div style={{ ...styles.chip, ...styles.chipTop }} className="chip-float chip-a">
+              <span style={styles.chipNum}>{meds.toLocaleString()}+</span>
               <span style={styles.chipLabel}>Medicines</span>
             </div>
-            <div style={{ ...styles.chip, ...styles.chipMid }}>
+            <div style={{ ...styles.chip, ...styles.chipMid }} className="chip-float chip-b">
               <span style={styles.chipNum}>Fast</span>
               <span style={styles.chipLabel}>Delivery</span>
             </div>
-            <div style={{ ...styles.chip, ...styles.chipBottom }}>
-              <span style={styles.chipNum}>100%</span>
+            <div style={{ ...styles.chip, ...styles.chipBottom }} className="chip-float chip-c">
+              <span style={styles.chipNum}>{genuine}%</span>
               <span style={styles.chipLabel}>Genuine</span>
             </div>
           </div>
