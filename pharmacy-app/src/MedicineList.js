@@ -302,7 +302,15 @@ function MedicineList() {
   const displayed = useMemo(() => {
     const source = !search ? randomSample : searchResults.results;
     const sliced = !search || committed ? source : source.slice(0, 12);
-    return sliced.map(applyInventory);
+    const withInventory = sliced.map(applyInventory);
+    // Items with real Firestore stock/price data (the ~44 tracked medicines)
+    // are the ones actually verified in stock — surface those before raw
+    // catalog-only entries, rather than whatever order the CSV happens to be in.
+    return [...withInventory].sort((a, b) => {
+      const aTracked = inventory[a.slug] ? 1 : 0;
+      const bTracked = inventory[b.slug] ? 1 : 0;
+      return bTracked - aTracked;
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, committed, randomSample, searchResults, inventory]);
 
@@ -430,11 +438,17 @@ const styles = {
   input: { width: "100%", padding: "13px 44px", fontSize: "14px", borderRadius: "12px", border: "1.5px solid #E4ECE0", outline: "none", backgroundColor: "#FAF7F1", transition: "border-color 0.15s" },
   clearBtn: { position: "absolute", right: "14px", background: "none", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: "16px" },
   resultCount: { marginTop: "10px", fontSize: "13px", fontWeight: "600", transition: "color 0.2s", textAlign: "right" },
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "20px", maxWidth: "1200px", margin: "0 auto" },
+  // Flexbox instead of CSS grid's auto-fill: with few items (e.g. a
+  // handful of search results) auto-fill's phantom empty tracks can make
+  // a short row look right-shifted instead of starting flush left.
+  // flex-wrap always packs strictly left-to-right, top-to-bottom.
+  grid: { display: "flex", flexWrap: "wrap", gap: "20px", maxWidth: "1200px", margin: "0 auto" },
   loadingWrap: { textAlign: "center", padding: "60px 20px" },
   loadingText: { fontSize: "18px", color: "#94a3b8" },
   card: {
     position: "relative",
+    flex: "1 1 260px",
+    maxWidth: "300px",
     backgroundColor: "#FFFFFF",
     borderRadius: "14px",
     padding: "20px",
