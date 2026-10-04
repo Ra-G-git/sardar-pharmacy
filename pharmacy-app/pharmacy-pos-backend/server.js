@@ -37,6 +37,9 @@ app.get('/pos*', (req, res) => {
 // Default-deny: every /api/* request needs a valid signed token, except the
 // four login/reset endpoints listed in auth.js. verifyRole() then checks the
 // role that is INSIDE the token (req.user), never a client-supplied header.
+// (Catalog search for the customer storefront is NOT here — it lives on
+// Vercel's own functions at api/catalog/*.js, not Render, so customers
+// never wait on this server's free-tier cold start. See that folder.)
 app.use('/api', auth.authenticate);
 const verifyRole = auth.verifyRole;
 

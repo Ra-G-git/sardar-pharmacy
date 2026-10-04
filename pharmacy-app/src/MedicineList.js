@@ -1,14 +1,26 @@
 import Reveal from "./Reveal";
-import { useState, useEffect, useMemo } from "react";
-import Papa from "papaparse";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { db } from "./firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { useCart } from "./CartContext";
 import { getMedicineEmoji, getUnitLabel, getUnitShort } from "./medicineUtils";
 
+// The catalog now lives behind a rate-limited search instead of a
+// downloadable medicines.csv. This deliberately does NOT go through Render
+// (that's only for Firestore-backed routes like orders/auth, and its free
+// tier sleeps after 15min idle — fine for POS staff, not for customers).
+// It hits Vercel's own serverless functions at api/catalog/*.js instead —
+// same origin, no cold-start wait, no Firebase dependency.
+async function fetchCatalog(path, params) {
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(`/api/catalog/${path}${qs ? `?${qs}` : ""}`);
+  if (!res.ok) throw new Error(`Catalog request failed: ${res.status}`);
+  return res.json();
+}
+
 // ─── Alt Brands Modal ────────────────────────────────────────────────────────
 
-function AltBrandsModal({ medicine, alternatives, onClose, addToCart, cart }) {
+function AltBrandsModal({ medicine, alternatives, loading, onClose, addToCart, cart }) {
   const allOptions = [medicine, ...alternatives];
 
   function getCartQty(slug) {
@@ -33,7 +45,12 @@ function AltBrandsModal({ medicine, alternatives, onClose, addToCart, cart }) {
 
         {/* List */}
         <div style={modalStyles.list}>
-          {alternatives.length === 0 ? (
+          {loading ? (
+            <div style={modalStyles.empty}>
+              <p style={{ fontSize: "32px", marginBottom: "8px" }}>⏳</p>
+              <p style={{ color: "#5B6B60", fontSize: "14px" }}>Looking for alternative brands…</p>
+            </div>
+          ) : alternatives.length === 0 ? (
             <div style={modalStyles.empty}>
               <p style={{ fontSize: "32px", marginBottom: "8px" }}>🔍</p>
               <p style={{ color: "#64748b", fontSize: "14px" }}>No alternative brands found for this generic.</p>
@@ -101,7 +118,7 @@ function AltBrandsModal({ medicine, alternatives, onClose, addToCart, cart }) {
 
 // ─── Medicine Card ────────────────────────────────────────────────────────────
 
-function MedicineCard({ med, addToCart, cartItem, onCardClick, altCount }) {
+function MedicineCard({ med, addToCart, cartItem, onCardClick }) {
   const qty = cartItem ? cartItem.quantity : 0;
   const added = qty > 0;
   const [editing, setEditing] = useState(false);
@@ -147,13 +164,6 @@ function MedicineCard({ med, addToCart, cartItem, onCardClick, altCount }) {
 
   return (
     <div style={styles.card} className="medicine-card" onClick={() => onCardClick(med)}>
-      {/* Alt brands badge */}
-      {altCount > 0 && (
-        <div style={styles.altBadge}>
-          {altCount} alt{altCount > 1 ? "s" : ""}
-        </div>
-      )}
-
       <div style={styles.cardTop}>
         <span style={styles.categoryBadge}>{med.category_name}</span>
         <span style={styles.emoji}>{getMedicineEmoji(med.category_name)}</span>
@@ -215,14 +225,17 @@ function MedicineCard({ med, addToCart, cartItem, onCardClick, altCount }) {
 // ─── Main MedicineList ────────────────────────────────────────────────────────
 
 function MedicineList() {
-  const [medicines, setMedicines] = useState([]);
   const [inventory, setInventory] = useState({});
   const [randomSample, setRandomSample] = useState([]);
   const [search, setSearch] = useState("");
   const [committed, setCommitted] = useState(false);
   const [invLoading, setInvLoading] = useState(true);
+  const [sampleLoading, setSampleLoading] = useState(true);
+  const [searchResults, setSearchResults] = useState({ results: [], total: 0, truncated: false });
+  const [searchLoading, setSearchLoading] = useState(false);
   const [altModal, setAltModal] = useState(null);
   const { addToCart, cart } = useCart();
+  const debounceRef = useRef(null);
 
   useEffect(() => {
     async function fetchInventory() {
@@ -242,54 +255,56 @@ function MedicineList() {
     fetchInventory();
   }, []);
 
+  // Initial, unsearched view: a small random sample from the backend
+  // instead of the full catalog downloaded client-side.
   useEffect(() => {
-    Papa.parse("/medicines.csv", {
-      download: true,
-      header: true,
-      complete: (result) => {
-        const data = result.data.filter((m) => m.medicine_name);
-        setMedicines(data);
-      },
-    });
+    async function fetchSample() {
+      try {
+        const data = await fetchCatalog("sample");
+        setRandomSample(data.results || []);
+      } catch (err) {
+        console.error("Failed to load sample:", err);
+      }
+      setSampleLoading(false);
+    }
+    fetchSample();
   }, []);
 
-  const mergedMedicines = useMemo(() => {
-    return medicines.map((med) => {
-      const inv = inventory[med.slug];
-      if (!inv) return med;
-      return {
-        ...med,
-        price: inv.price ?? med.price,
-        stock: inv.stock, // kept in data for logic, not displayed on cards
-      };
-    });
-  }, [medicines, inventory]);
+  function applyInventory(med) {
+    const inv = inventory[med.slug];
+    if (!inv) return med;
+    return { ...med, price: inv.price ?? med.price, stock: inv.stock };
+  }
 
-  useEffect(() => {
-    if (mergedMedicines.length === 0 || invLoading) return;
-    const shuffled = [...mergedMedicines].sort(() => Math.random() - 0.5);
-    setRandomSample(shuffled.slice(0, 12));
-  }, [mergedMedicines, invLoading]);
-
-  const allMatches = useMemo(() => {
-    if (!search) return [];
-    const q = search.toLowerCase();
-    return mergedMedicines.filter((med) =>
-      med.medicine_name?.toLowerCase().includes(q) ||
-      med.generic_name?.toLowerCase().includes(q) ||
-      med.category_name?.toLowerCase().includes(q)
-    );
-  }, [search, mergedMedicines]);
-
+  // Debounced server-side search as the user types (preview mode), and an
+  // immediate full search on Enter (committed mode) — mirrors the old
+  // client-side behavior but now goes through the rate-limited endpoint.
   useEffect(() => {
     setCommitted(false);
+    clearTimeout(debounceRef.current);
+    if (!search || search.trim().length < 2) {
+      setSearchResults({ results: [], total: 0, truncated: false });
+      return;
+    }
+    setSearchLoading(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const data = await fetchCatalog("search", { q: search.trim() });
+        setSearchResults(data);
+      } catch (err) {
+        console.error("Search failed:", err);
+      }
+      setSearchLoading(false);
+    }, 300);
+    return () => clearTimeout(debounceRef.current);
   }, [search]);
 
   const displayed = useMemo(() => {
-    if (!search) return randomSample;
-    if (committed) return allMatches;
-    return allMatches.slice(0, 12);
-  }, [search, committed, allMatches, randomSample]);
+    const source = !search ? randomSample : searchResults.results;
+    const sliced = !search || committed ? source : source.slice(0, 12);
+    return sliced.map(applyInventory);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, committed, randomSample, searchResults, inventory]);
 
   function handleKeyDown(e) {
     if (e.key === "Enter" && search) setCommitted(true);
@@ -304,26 +319,35 @@ function MedicineList() {
     return cart.find((item) => item.slug === med.slug) || null;
   }
 
-  function getAlternatives(med) {
-    if (!med.generic_name) return [];
-    const generic = med.generic_name.toLowerCase().trim();
-    return mergedMedicines.filter(
-      (m) =>
-        m.generic_name?.toLowerCase().trim() === generic &&
-        m.medicine_name !== med.medicine_name
-    );
-  }
+  const [altAlternatives, setAltAlternatives] = useState([]);
 
-  function handleCardClick(med) {
-    setAltModal({ medicine: med, alternatives: getAlternatives(med) });
-  }
+  const handleCardClick = useCallback(async (med) => {
+    setAltModal({ medicine: med, loading: true });
+    setAltAlternatives([]);
+    if (!med.generic_name) {
+      setAltModal({ medicine: med, loading: false });
+      return;
+    }
+    try {
+      const data = await fetchCatalog("alternatives", {
+        generic: med.generic_name,
+        exclude: med.medicine_name,
+      });
+      setAltAlternatives((data.results || []).map(applyInventory));
+    } catch (err) {
+      console.error("Failed to load alternatives:", err);
+    }
+    setAltModal({ medicine: med, loading: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inventory]);
 
   const searchHint = useMemo(() => {
-    if (!search) return null;
-    if (committed) return `${allMatches.length} result${allMatches.length !== 1 ? "s" : ""} for "${search}"`;
-    if (allMatches.length === 0) return null;
-    return `${allMatches.length} result${allMatches.length !== 1 ? "s" : ""} — press Enter to see all`;
-  }, [search, committed, allMatches.length]);
+    if (!search || search.trim().length < 2) return null;
+    if (searchLoading) return "Searching…";
+    if (committed) return `${searchResults.total} result${searchResults.total !== 1 ? "s" : ""} for "${search}"${searchResults.truncated ? ` (showing first ${searchResults.results.length})` : ""}`;
+    if (searchResults.total === 0) return null;
+    return `${searchResults.total} result${searchResults.total !== 1 ? "s" : ""} — press Enter to see all`;
+  }, [search, committed, searchResults, searchLoading]);
 
   return (
     <div style={styles.container}>
@@ -355,11 +379,11 @@ function MedicineList() {
         </div>
       </div>
 
-      {invLoading ? (
+      {invLoading || (sampleLoading && !search) ? (
         <div style={styles.loadingWrap}>
           <p style={styles.loadingText}>⏳ Loading medicines...</p>
         </div>
-      ) : displayed.length === 0 && search ? (
+      ) : displayed.length === 0 && search && search.trim().length >= 2 && !searchLoading ? (
         <div style={styles.noResult}>
           <p style={styles.noResultText}>😕 No medicines found for "{search}"</p>
           <p style={styles.noResultSub}>Try a different name or category</p>
@@ -373,7 +397,6 @@ function MedicineList() {
                 addToCart={addToCart}
                 cartItem={getCartItem(med)}
                 onCardClick={handleCardClick}
-                altCount={getAlternatives(med).length}
               />
             </Reveal>
           ))}
@@ -383,7 +406,8 @@ function MedicineList() {
       {altModal && (
         <AltBrandsModal
           medicine={altModal.medicine}
-          alternatives={altModal.alternatives}
+          alternatives={altAlternatives}
+          loading={altModal.loading}
           onClose={() => setAltModal(null)}
           addToCart={addToCart}
           cart={cart}
@@ -435,7 +459,7 @@ const styles = {
     borderRadius: "20px",
     letterSpacing: "0.3px",
   },
-  cardTop: { display: "flex", justifyContent: "space-between", alignItems: "center", paddingRight: "52px" },
+  cardTop: { display: "flex", justifyContent: "space-between", alignItems: "center" },
   categoryBadge: { backgroundColor: "#E4ECE0", color: "#24512F", fontSize: "11px", fontWeight: "600", padding: "4px 10px", borderRadius: "6px", letterSpacing: "0.2px" },
   emoji: { fontSize: "28px" },
   name: { fontSize: "16px", fontWeight: "700", color: "#16241A", marginTop: "4px" },

@@ -1,5 +1,10 @@
 {
   "rewrites": [
     { "source": "/pos/(.*)", "destination": "/pos/index.html" }
-  ]
+  ],
+  "functions": {
+    "api/catalog/*.js": {
+      "includeFiles": "pharmacy-pos-backend/medicines.csv"
+    }
+  }
 }
