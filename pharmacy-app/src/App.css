@@ -179,3 +179,104 @@ a:focus-visible {
   .cross-float, .blob-morph, .chip-float { animation: none !important; }
   .service-card, .service-icon, .service-arrow { transition: none !important; }
 }
+
+/* ── Medicine grid: fixed column count, always flush-left rows ──────── */
+.medicine-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+@media (max-width: 1000px) {
+  .medicine-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 560px) {
+  .medicine-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Category tabs ─────────────────────────────────────────────────── */
+.cat-chips {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 2px 14px;
+  margin-bottom: 20px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+}
+.cat-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1.5px solid #E4ECE0;
+  background: #FFFFFF;
+  color: #16241A;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+.cat-chip:hover { border-color: #24512F; transform: translateY(-1px); }
+.cat-chip.active { background: #24512F; border-color: #24512F; color: #FFFFFF; }
+.cat-count { font-size: 11px; font-weight: 600; opacity: 0.6; }
+
+/* ── Horizontal product rows ───────────────────────────────────────── */
+.row-scroller {
+  display: flex;
+  gap: 18px;
+  overflow-x: auto;
+  padding: 6px 4px 18px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+.row-scroller::-webkit-scrollbar { display: none; }
+.row-item { flex: 0 0 272px; scroll-snap-align: start; }
+
+.arrow-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid #E4ECE0;
+  background: #FFFFFF;
+  color: #24512F;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.arrow-btn:hover { background: #E4ECE0; border-color: #24512F; }
+.link-btn {
+  background: none;
+  border: none;
+  color: #24512F;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 4px;
+}
+.link-btn:hover { text-decoration: underline; }
+
+/* ── Loading skeleton ──────────────────────────────────────────────── */
+.skeleton {
+  height: 300px;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #F5F3EC 25%, #EFEDE5 50%, #F5F3EC 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@media (max-width: 560px) {
+  .row-item { flex-basis: 78%; }
+  .arrow-btn { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  .cat-chip { transition: none; }
+}

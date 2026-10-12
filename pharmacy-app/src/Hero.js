@@ -92,10 +92,10 @@ function Hero() {
 const styles = {
   hero: {
     background: "#FAF7F1",
-    minHeight: "88vh",
+    minHeight: "62vh",
     display: "flex",
     alignItems: "center",
-    padding: "72px 24px",
+    padding: "52px 24px",
   },
   grid: {
     maxWidth: "1180px",
