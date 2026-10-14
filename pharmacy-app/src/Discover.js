@@ -3,6 +3,67 @@ import Reveal from "./Reveal";
 import { fetchCatalog, getRecents } from "./catalogApi";
 import { MedicineCard } from "./MedicineCard";
 import { getMedicineEmoji } from "./medicineUtils";
+import { CATEGORY_IMAGES } from "./categoryImages";
+
+// Tile colours — cycled by position so neighbours always differ.
+const TILE_TONES = [
+  ["#1F5A33", "#3E8B55"], // forest
+  ["#B8741A", "#E8A33D"], // amber
+  ["#0F5C63", "#2A9199"], // teal
+  ["#4B3F8F", "#7A6BC4"], // indigo
+  ["#A4413A", "#D8706A"], // coral
+  ["#2F6B3A", "#8DB85C"], // moss
+];
+
+function photoFor(name) {
+  const key = (name || "").toLowerCase();
+  const hit = Object.keys(CATEGORY_IMAGES).find((k) => key.includes(k));
+  return hit ? CATEGORY_IMAGES[hit] : "";
+}
+
+function CategoryTiles({ categories, onPick }) {
+  const [showAll, setShowAll] = useState(false);
+  const shown = showAll ? categories : categories.slice(0, 8);
+  return (
+    <section style={styles.section} aria-label="Shop by category">
+      <div style={styles.rowHead}>
+        <div>
+          <h3 style={styles.rowTitle}>Shop by category</h3>
+          <p style={styles.rowNote}>Pick a type to browse</p>
+        </div>
+        {categories.length > 8 && (
+          <button className="link-btn" onClick={() => setShowAll((v) => !v)}>
+            {showAll ? "Show fewer" : `Show all ${categories.length}`}
+          </button>
+        )}
+      </div>
+      <div className="cat-tiles">
+        {shown.map((c, i) => {
+          const [from, to] = TILE_TONES[i % TILE_TONES.length];
+          const photo = photoFor(c.name);
+          return (
+            <button
+              key={c.name}
+              className="cat-tile"
+              style={{ "--from": from, "--to": to }}
+              onClick={() => onPick(c.name)}
+            >
+              {photo && <img className="cat-tile-photo" src={photo} alt="" loading="lazy" />}
+              <span className="cat-tile-shade" aria-hidden="true" />
+              <span className="cat-tile-blob" aria-hidden="true" />
+              <span className="cat-tile-emoji" aria-hidden="true">{getMedicineEmoji(c.name)}</span>
+              <span className="cat-tile-text">
+                <span className="cat-tile-name">{c.name}</span>
+                <span className="cat-tile-count">{c.count.toLocaleString()} listed</span>
+              </span>
+              <span className="cat-tile-go" aria-hidden="true">→</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 // The storefront's landing view: category tabs, a "Suggested for you" row
 // (once the visitor has looked at or added something), and a row per big
@@ -132,7 +193,7 @@ function Discover({ decorate, onCardClick, addToCart, getCartItem }) {
 
   return (
     <div id="discover-top" style={styles.wrap}>
-      {home && (
+      {home && active && (
         <div className="cat-chips" role="tablist" aria-label="Medicine categories">
           <button
             role="tab"
@@ -203,6 +264,9 @@ function Discover({ decorate, onCardClick, addToCart, getCartItem }) {
         </section>
       ) : (
         <>
+          <Reveal>
+            <CategoryTiles categories={home.categories} onPick={pick} />
+          </Reveal>
           {suggested.length > 0 && (
             <Reveal>
               <Row

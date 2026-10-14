@@ -5,6 +5,7 @@
     cart: [],
     selectedCustomer: null,
     payments: [{ method: 'Cash', amount: 0 }],
+    paymentTouched: false, // true once the cashier edits the amount by hand (partial payment / due)
 
     async render() {
       const mc = document.getElementById('main-content');
@@ -14,6 +15,7 @@
       this.cart = [];
       this.selectedCustomer = null;
       this.payments = [{ method: 'Cash', amount: 0, lastFour: '' }];
+      this.paymentTouched = false;
 
       // Start loading the catalog immediately (don't await) so it's likely
       // already cached by the time someone starts typing in the search box.
@@ -125,10 +127,14 @@
             <div class="card">
               <div class="card-header flex justify-between items-center">
                 <span>💳 Payment Information</span>
-                <button class="btn btn-secondary btn-sm" id="btn-add-payment">+ Add Split Payment</button>
+                <span style="display:flex; gap:8px;">
+                  <button class="btn btn-secondary btn-sm" id="btn-pay-later" title="Customer pays nothing now — the whole bill becomes due">🕒 Pay later (all due)</button>
+                  <button class="btn btn-secondary btn-sm" id="btn-add-payment">+ Add Split Payment</button>
+                </span>
               </div>
               <div class="card-body">
                 <div id="payment-rows-container"></div>
+                <div id="due-note" style="display:none; margin-top:10px; padding:10px 12px; border-radius:8px; background:#fff7e6; border:1px solid #f5c97a; color:#8a5a00; font-size:13px;"></div>
               </div>
             </div>
           </div>
@@ -152,6 +158,14 @@
               <div class="summary-row total">
                 <span>Grand Total:</span>
                 <span class="summary-val" id="summary-total">৳0.00</span>
+              </div>
+              <div class="summary-row">
+                <span>Paid now:</span>
+                <span class="summary-val text-success" id="summary-paid">৳0.00</span>
+              </div>
+              <div class="summary-row" id="summary-due-row">
+                <span>Due:</span>
+                <span class="summary-val" id="summary-due">৳0.00</span>
               </div>
 
               <button class="btn btn-success btn-lg btn-block mt-3" id="btn-place-order" style="padding:16px;">
@@ -570,6 +584,13 @@
       };
 
       // ── Add Payment Split ────────────────────────────
+      document.getElementById('btn-pay-later').onclick = () => {
+        this.payments = [{ method: 'Cash', amount: 0, lastFour: '' }];
+        this.paymentTouched = true;
+        this.renderPayments();
+        this.recalculate();
+      };
+
       document.getElementById('btn-add-payment').onclick = () => {
         this.payments.push({ method: 'Cash', amount: 0, lastFour: '' });
         this.renderPayments();
@@ -986,6 +1007,7 @@
         row.querySelector('.payment-amount-input').oninput = (e) => {
           const val = parseFloat(e.target.value) || 0;
           this.payments[idx].amount = val;
+          this.paymentTouched = true;
 
           // Auto-balance remaining payment amount across other split row
           if (this.payments.length > 1) {
@@ -1086,17 +1108,33 @@
       const { subtotal, discountAmount, taxAmount, grandTotal } = this.calculateTotals();
 
       // Default single payment row amount to grandTotal
-      if (this.payments.length === 1) {
+      if (this.payments.length === 1 && !this.paymentTouched) {
         this.payments[0].amount = grandTotal;
         const pInput = document.querySelector('.payment-amount-input');
         if (pInput) pInput.value = grandTotal.toFixed(2);
       }
+
+      const paidNow = this.payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+      const due = Math.max(0, grandTotal - paidNow);
 
       // Update Summary Fields
       document.getElementById('summary-subtotal').textContent = H.formatCurrency(subtotal);
       document.getElementById('summary-discount').textContent = `-${H.formatCurrency(discountAmount)}`;
       document.getElementById('summary-tax').textContent = H.formatCurrency(taxAmount);
       document.getElementById('summary-total').textContent = H.formatCurrency(grandTotal);
+      document.getElementById('summary-paid').textContent = H.formatCurrency(Math.min(paidNow, grandTotal));
+      const dueEl = document.getElementById('summary-due');
+      dueEl.textContent = H.formatCurrency(due);
+      dueEl.className = 'summary-val ' + (due > 0.004 ? 'text-danger' : 'text-success');
+      const note = document.getElementById('due-note');
+      if (note) {
+        if (due > 0.004) {
+          note.style.display = 'block';
+          note.innerHTML = `⚠️ <strong>${H.formatCurrency(due)}</strong> will be recorded as <strong>due</strong> on the customer's account. A customer must be selected.`;
+        } else {
+          note.style.display = 'none';
+        }
+      }
     },
 
     async placeOrder() {
@@ -1149,7 +1187,15 @@
       const discType = document.getElementById('discount-type').value;
       const discVal = parseFloat(document.getElementById('discount-value').value) || 0;
 
-      const totalPaid = this.payments.reduce((s, p) => s + p.amount, 0);
+      const rawPaid = this.payments.reduce((s, p) => s + (parseFloat(p.amount) || 0), 0);
+      const dueAmount = Math.max(0, Math.round((grandTotal - rawPaid) * 100) / 100);
+      const totalPaid = Math.min(rawPaid, grandTotal); // overpayment is change, not income
+
+      // Due needs somebody to owe it. (Typed names were auto-added above.)
+      if (dueAmount > 0.004 && !this.selectedCustomer) {
+        H.showToast('Select or add a customer first — a due balance has to belong to someone.', 'error');
+        return;
+      }
 
       const invoiceId = await S.getNextId('INV-');
       const orderId = Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
@@ -1181,7 +1227,7 @@
         taxAmount,
         grandTotal,
         paidAmount: totalPaid,
-        dueAmount: 0,
+        dueAmount,
         returnedAmount: 0,
         status: 'completed'
       };
@@ -1210,7 +1256,7 @@
         isCustom: !!item.isCustom
       }));
 
-      const orderPaymentsList = this.payments.map(p => ({
+      const orderPaymentsList = this.payments.filter(p => (parseFloat(p.amount) || 0) > 0).map(p => ({
         id: 'pay_' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
         orderId,
         method: p.method,

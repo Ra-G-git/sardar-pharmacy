@@ -373,6 +373,11 @@
                   <span>Paid Amount:</span>
                   <span style="font-weight:700;">${H.formatCurrency(order.paidAmount)}</span>
                 </div>
+                ${(parseFloat(order.dueAmount) || 0) > 0.004 ? `
+                <div class="flex justify-between text-danger">
+                  <span style="font-weight:700;">Due:</span>
+                  <span style="font-weight:800;">${H.formatCurrency(order.dueAmount)}</span>
+                </div>` : ''}
               </div>
             </div>
           </div>

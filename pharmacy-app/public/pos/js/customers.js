@@ -77,7 +77,8 @@
         // Calculate totals for customer
         // We match by customerId or phone number to catch guest checkouts where guest updated details
         const custOrders = orders.filter(o => o.customerId === c.id || (c.phone && o.customerPhone === c.phone));
-        const totalSpent = custOrders.reduce((s, o) => s + o.grandTotal, 0);
+        const totalSpent = custOrders.reduce((s, o) => s + (parseFloat(o.grandTotal) || 0), 0);
+        const totalDue = custOrders.reduce((s, o) => s + (parseFloat(o.dueAmount) || 0), 0);
 
         const avatarChar = c.name ? c.name.charAt(0).toUpperCase() : '?';
         const labelStyle = c.label ? `background:${H.labelColors[c.label] || '#64748b'};` : 'background:#64748b;';
@@ -99,6 +100,11 @@
               <span>🛍️ <strong>${custOrders.length}</strong> Orders</span>
               <span>💰 Spent <strong>${H.formatCurrency(totalSpent)}</strong></span>
             </div>
+            ${totalDue > 0.004 ? `
+              <div style="margin-top:10px; padding:8px 10px; border-radius:8px; background:#fdecec; border:1px solid #f3b4b4; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <span style="color:var(--danger); font-weight:700;">Due ${H.formatCurrency(totalDue)}</span>
+                <button class="btn btn-danger btn-sm btn-collect-due">💵 Collect</button>
+              </div>` : ''}
             <div class="customer-actions" style="margin-top: 8px;">
               <button class="btn btn-secondary btn-sm btn-view-purchases" style="flex:1;">🛒 View Orders</button>
               <button class="btn btn-secondary btn-sm btn-edit-customer" style="padding: 6px 10px;">✏️ Edit</button>
@@ -114,6 +120,8 @@
         const c = customers.find(cust => cust.id === id);
 
         card.querySelector('.btn-view-purchases').onclick = () => this.showPurchaseHistoryModal(c);
+        const collectBtn = card.querySelector('.btn-collect-due');
+        if (collectBtn) collectBtn.onclick = () => this.showCollectDueModal(c, async () => { await this.updateList(search); });
         card.querySelector('.btn-edit-customer').onclick = () => this.showAddEditModal(c);
         card.querySelector('.btn-delete-customer').onclick = async () => {
           if (await H.confirm(`Are you sure you want to delete customer ${c.name}?`)) {
@@ -206,6 +214,88 @@
 
         close();
         await this.render(); // refresh entire screen
+      };
+    },
+
+    async showCollectDueModal(customer, onDone) {
+      const S = POS.Store;
+      const H = POS.Helpers;
+      const overlay = document.getElementById('cust-modal-overlay');
+
+      S.invalidate('orders');
+      const orders = await S.getAll('orders');
+      const due = orders
+        .filter(o => o.customerId === customer.id || (customer.phone && o.customerPhone === customer.phone))
+        .reduce((s, o) => s + (parseFloat(o.dueAmount) || 0), 0);
+
+      overlay.innerHTML = `
+        <div class="modal" style="max-width:420px;">
+          <div class="modal-header">
+            <h3>Collect Due — ${H.esc(customer.name)}</h3>
+            <button class="modal-close" id="cd-close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div style="text-align:center; margin-bottom:14px;">
+              <div class="text-muted" style="font-size:12px;">Total due</div>
+              <div style="font-size:28px; font-weight:800; color:var(--danger);">${H.formatCurrency(due)}</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Amount received (৳)</label>
+              <input type="number" class="form-input" id="cd-amount" min="0" max="${due}" value="${due.toFixed(2)}">
+              <button class="btn btn-secondary btn-sm" id="cd-full" style="margin-top:6px;">Pay in full</button>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Method</label>
+              <select class="form-select" id="cd-method">
+                ${H.paymentMethods.map(m => `<option value="${m}">${m}</option>`).join('')}
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Note <span class="text-muted" style="font-weight:400;">(optional)</span></label>
+              <input type="text" class="form-input" id="cd-note" placeholder="e.g. paid by wife">
+            </div>
+            <p class="text-muted" style="font-size:12px;">Payments are applied to the oldest unpaid invoices first.</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" id="cd-cancel">Cancel</button>
+            <button class="btn btn-success" id="cd-save">Record payment</button>
+          </div>
+        </div>
+      `;
+      overlay.classList.add('active');
+      const close = () => overlay.classList.remove('active');
+      overlay.querySelector('#cd-close').onclick = close;
+      overlay.querySelector('#cd-cancel').onclick = close;
+      overlay.querySelector('#cd-full').onclick = () => { overlay.querySelector('#cd-amount').value = due.toFixed(2); };
+
+      overlay.querySelector('#cd-save').onclick = async (e) => {
+        const amount = parseFloat(overlay.querySelector('#cd-amount').value) || 0;
+        if (amount <= 0) { H.showToast('Enter an amount greater than zero.', 'error'); return; }
+        if (amount > due + 0.004) { H.showToast('That is more than the due balance.', 'error'); return; }
+        e.target.disabled = true;
+        try {
+          const res = await fetch(`${window.POS.API_BASE}/api/customers/${customer.id}/collect-due`, {
+            method: 'POST',
+            headers: S.getHeaders(),
+            body: JSON.stringify({
+              amount,
+              method: overlay.querySelector('#cd-method').value,
+              note: overlay.querySelector('#cd-note').value.trim()
+            })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+          H.showToast(data.remainingDue > 0.004
+            ? `Received ${H.formatCurrency(amount)}. ${H.formatCurrency(data.remainingDue)} still due.`
+            : `Received ${H.formatCurrency(amount)}. Account cleared.`);
+          S.invalidate('orders');
+          S.invalidate('payments');
+          close();
+          if (onDone) await onDone();
+        } catch (err) {
+          H.showToast('Could not record payment: ' + err.message, 'error');
+          e.target.disabled = false;
+        }
       };
     },
 

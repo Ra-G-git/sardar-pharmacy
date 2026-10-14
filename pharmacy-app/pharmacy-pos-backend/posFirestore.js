@@ -365,6 +365,51 @@ async function createOrder({ order, items, payments }) {
   return { id: ref.id, invoiceId };
 }
 
+// ── Customer due collection ───────────────────────────────────
+// Applies a payment against a customer's unpaid POS orders, oldest first.
+// Each order keeps its own paidAmount/dueAmount, and the payment is also
+// appended to that order's payments[] (flagged isDueCollection) so
+// reports and the dashboard's payment-method breakdown stay consistent.
+async function collectDue(customerId, { amount, method, note }) {
+  let remaining = Math.round((parseFloat(amount) || 0) * 100) / 100;
+  if (remaining <= 0) throw new Error('Enter an amount greater than zero.');
+  const custDoc = await db.collection('pos_customers').doc(customerId).get();
+  if (!custDoc.exists) throw new Error('Customer not found.');
+  const phone = custDoc.data().phone || '';
+
+  const snap = await db.collection('orders').where('orderType', '==', 'pos').get();
+  const unpaid = snap.docs
+    .map(d => ({ ref: d.ref, id: d.id, ...d.data() }))
+    .filter(o => (o.customerId === customerId || (phone && o.phone === phone)) && (parseFloat(o.dueAmount) || 0) > 0.004)
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+  const totalDue = unpaid.reduce((s, o) => s + (parseFloat(o.dueAmount) || 0), 0);
+  if (totalDue <= 0.004) throw new Error('This customer has no due balance.');
+  if (remaining > totalDue + 0.004) throw new Error(`Amount is more than the due balance (৳${totalDue.toFixed(2)}).`);
+
+  const now = new Date().toISOString();
+  const applied = [];
+  for (const o of unpaid) {
+    if (remaining <= 0.004) break;
+    const due = parseFloat(o.dueAmount) || 0;
+    const pay = Math.min(due, remaining);
+    const payments = Array.isArray(o.payments) ? o.payments.slice() : [];
+    payments.push({
+      id: 'due_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      orderId: o.id, method: method || 'Cash', amount: Math.round(pay * 100) / 100,
+      lastFour: null, isDueCollection: true, date: now, note: note || '',
+    });
+    await o.ref.update({
+      paidAmount: Math.round(((parseFloat(o.paidAmount) || 0) + pay) * 100) / 100,
+      dueAmount: Math.max(0, Math.round((due - pay) * 100) / 100),
+      payments,
+    });
+    applied.push({ invoiceId: o.invoiceId, amount: Math.round(pay * 100) / 100 });
+    remaining = Math.round((remaining - pay) * 100) / 100;
+  }
+  return { applied, remainingDue: Math.max(0, Math.round((totalDue - (parseFloat(amount) || 0)) * 100) / 100) };
+}
+
 async function restoreStockForOrder(orderId) {
   const doc = await db.collection('orders').doc(orderId).get();
   if (!doc.exists) return;
@@ -501,7 +546,7 @@ module.exports = {
   listCategories, createCategory, deleteCategory,
   listCustomers, createCustomer, updateCustomer, deleteCustomer,
   nextCounter,
-  listOrders, getOrder, createOrder, deleteOrder, updateOrder,
+  listOrders, getOrder, createOrder, deleteOrder, updateOrder, collectDue,
   listReturns, createReturn,
   exportBackup, importBackup,
   listPrescriptions, updatePrescriptionStatus,

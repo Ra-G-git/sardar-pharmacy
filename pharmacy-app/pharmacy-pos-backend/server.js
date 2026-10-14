@@ -357,6 +357,10 @@ app.put('/api/customers/:id', verifyRole(['admin', 'manager', 'cashier']), async
   try { await pos.updateCustomer(req.params.id, req.body); res.json({ success: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
 });
+app.post('/api/customers/:id/collect-due', verifyRole(['admin', 'manager', 'cashier']), async (req, res) => {
+  try { res.json({ success: true, ...(await pos.collectDue(req.params.id, req.body || {})) }); }
+  catch (err) { res.status(400).json({ error: err.message }); }
+});
 app.delete('/api/customers/:id', verifyRole(['admin', 'manager', 'cashier']), async (req, res) => {
   try { await pos.deleteCustomer(req.params.id); res.json({ success: true }); }
   catch (err) { res.status(500).json({ error: err.message }); }
