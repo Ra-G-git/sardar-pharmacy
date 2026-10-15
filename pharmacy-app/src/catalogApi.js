@@ -25,7 +25,7 @@ export function pushRecent(med) {
   if (!med || !med.slug) return;
   try {
     const next = [
-      { s: med.slug, g: med.generic_name || "", c: med.category_name || "", n: med.medicine_name || "" },
+      { s: med.slug, g: med.generic_name || "", c: med.concern || med.category_name || "", n: med.medicine_name || "" },
       ...getRecents().filter((r) => r.s !== med.slug),
     ].slice(0, 8);
     localStorage.setItem(RECENT_KEY, JSON.stringify(next));

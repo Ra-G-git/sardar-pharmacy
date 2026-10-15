@@ -75,8 +75,8 @@ function Hero() {
               <span style={styles.chipLabel}>Medicines</span>
             </div>
             <div style={{ ...styles.chip, ...styles.chipMid }} className="chip-float chip-b">
-              <span style={styles.chipNum}>Fast</span>
-              <span style={styles.chipLabel}>Delivery</span>
+              <span style={styles.chipNum}>Local</span>
+              <span style={styles.chipLabel}>Mirpur pharmacy</span>
             </div>
             <div style={{ ...styles.chip, ...styles.chipBottom }} className="chip-float chip-c">
               <span style={styles.chipNum}>{genuine}%</span>

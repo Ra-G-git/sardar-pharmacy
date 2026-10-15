@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const Papa = require('papaparse');
+const { CONCERNS, concernOf } = require('./_concerns');
 
 let cache = null;
 
@@ -16,21 +17,24 @@ function loadCatalog() {
   const parsed = Papa.parse(raw, { header: true, skipEmptyLines: true });
   const all = parsed.data.filter((r) => r.medicine_name && r.slug);
 
-  // Group by category once, so category browsing is a map lookup.
-  const catMap = new Map();
+  // Group by what the customer is shopping for (skin care, diabetes ...),
+  // not by dosage form. Done once per warm instance, so browsing a shelf is
+  // a map lookup.
+  const byId = new Map(CONCERNS.map((c) => [c.id, { ...c, name: c.label, count: 0, rows: [] }]));
   for (const r of all) {
-    const name = (r.category_name || '').trim();
-    if (!name) continue;
-    const key = name.toLowerCase();
-    let c = catMap.get(key);
-    if (!c) {
-      c = { name, count: 0, rows: [] };
-      catMap.set(key, c);
-    }
+    const c = byId.get(concernOf(r));
+    r.concern = c.label;
     c.rows.push(r);
     c.count++;
   }
-  const cats = [...catMap.values()].sort((a, b) => b.count - a.count);
+  const catMap = new Map();
+  const cats = [];
+  for (const def of CONCERNS) {
+    const c = byId.get(def.id);
+    if (c.count === 0) continue;
+    catMap.set(c.name.toLowerCase(), c);
+    cats.push(c); // CONCERNS order = display order ("More Medicines" last)
+  }
 
   cache = { all, catMap, cats };
   return cache;
@@ -56,6 +60,7 @@ function publicRow(r) {
     medicine_name: r.medicine_name,
     generic_name: r.generic_name,
     category_name: r.category_name,
+    concern: r.concern,
     manufacturer_name: r.manufacturer_name,
     strength: r.strength,
     unit_size: r.unit_size,

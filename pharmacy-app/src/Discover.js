@@ -2,8 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Reveal from "./Reveal";
 import { fetchCatalog, getRecents } from "./catalogApi";
 import { MedicineCard } from "./MedicineCard";
-import { getMedicineEmoji } from "./medicineUtils";
-import { CATEGORY_IMAGES } from "./categoryImages";
+import CategoryIcon from "./CategoryIcon";
+import PromoBanner from "./PromoBanner";
+import { CATEGORY_PHOTOS, PHOTO_CREDITS } from "./categoryImages";
 
 // Tile colours — cycled by position so neighbours always differ.
 const TILE_TONES = [
@@ -15,17 +16,34 @@ const TILE_TONES = [
   ["#2F6B3A", "#8DB85C"], // moss
 ];
 
-function photoFor(name) {
-  const key = (name || "").toLowerCase();
-  const hit = Object.keys(CATEGORY_IMAGES).find((k) => key.includes(k));
-  return hit ? CATEGORY_IMAGES[hit] : "";
+function Marquee({ categories, onPick }) {
+  const items = categories.filter((c) => c.id !== "other");
+  const loop = [...items, ...items];
+  return (
+    <div className="marquee" aria-label="Shelves">
+      <div className="marquee-track">
+        {loop.map((c, i) => (
+          <button
+            key={`${c.id}-${i}`}
+            className="marquee-item"
+            tabIndex={i < items.length ? 0 : -1}
+            aria-hidden={i >= items.length}
+            onClick={() => onPick(c.name)}
+          >
+            <CategoryIcon name={c.icon} size={18} />
+            {c.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function CategoryTiles({ categories, onPick }) {
   const [showAll, setShowAll] = useState(false);
   const shown = showAll ? categories : categories.slice(0, 8);
   return (
-    <section style={styles.section} aria-label="Shop by category">
+    <section id="shop-by-category" style={{ ...styles.section, scrollMarginTop: "96px" }} aria-label="Shop by category">
       <div style={styles.rowHead}>
         <div>
           <h3 style={styles.rowTitle}>Shop by category</h3>
@@ -39,8 +57,8 @@ function CategoryTiles({ categories, onPick }) {
       </div>
       <div className="cat-tiles">
         {shown.map((c, i) => {
-          const [from, to] = TILE_TONES[i % TILE_TONES.length];
-          const photo = photoFor(c.name);
+          const [from, to] = TILE_TONES[(c.tone ?? i) % TILE_TONES.length];
+          const photo = CATEGORY_PHOTOS[c.id];
           return (
             <button
               key={c.name}
@@ -48,10 +66,18 @@ function CategoryTiles({ categories, onPick }) {
               style={{ "--from": from, "--to": to }}
               onClick={() => onPick(c.name)}
             >
-              {photo && <img className="cat-tile-photo" src={photo} alt="" loading="lazy" />}
+              {photo && (
+                <img
+                  className="cat-tile-photo"
+                  src={photo}
+                  alt=""
+                  loading="lazy"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                />
+              )}
               <span className="cat-tile-shade" aria-hidden="true" />
               <span className="cat-tile-blob" aria-hidden="true" />
-              <span className="cat-tile-emoji" aria-hidden="true">{getMedicineEmoji(c.name)}</span>
+              <span className="cat-tile-emoji" aria-hidden="true"><CategoryIcon name={c.icon} size={26} /></span>
               <span className="cat-tile-text">
                 <span className="cat-tile-name">{c.name}</span>
                 <span className="cat-tile-count">{c.count.toLocaleString()} listed</span>
@@ -211,7 +237,7 @@ function Discover({ decorate, onCardClick, addToCart, getCartItem }) {
               className={`cat-chip${active === c.name ? " active" : ""}`}
               onClick={() => pick(c.name)}
             >
-              <span aria-hidden="true">{getMedicineEmoji(c.name)}</span>
+              <CategoryIcon name={c.icon} size={16} />
               {c.name}
               <span className="cat-count">{c.count.toLocaleString()}</span>
             </button>
@@ -264,6 +290,14 @@ function Discover({ decorate, onCardClick, addToCart, getCartItem }) {
         </section>
       ) : (
         <>
+          <PromoBanner
+            onPick={pick}
+            onBrowse={() => {
+              const el = document.getElementById("shop-by-category");
+              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          />
+          <Marquee categories={home.categories} onPick={pick} />
           <Reveal>
             <CategoryTiles categories={home.categories} onPick={pick} />
           </Reveal>
@@ -288,6 +322,7 @@ function Discover({ decorate, onCardClick, addToCart, getCartItem }) {
               />
             </Reveal>
           ))}
+          <p className="photo-credit">{PHOTO_CREDITS}</p>
         </>
       )}
     </div>
