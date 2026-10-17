@@ -31,6 +31,13 @@ const icons = {
 
 const go = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
 
+const TONES = [
+  ["#B8741A", "#E8A33D"],
+  ["#1F5A33", "#3E8B55"],
+  ["#0F5C63", "#2A9199"],
+  ["#4B3F8F", "#7A6BC4"],
+];
+
 const items = [
   {
     icon: icons.rx,
@@ -69,7 +76,11 @@ function Services() {
         <div style={styles.grid}>
           {items.map((it, i) => (
             <Reveal key={it.title} delay={i * 90} style={{ height: "100%" }}>
-              <button className="service-card" style={styles.card} onClick={it.action}>
+              <button
+                className="service-card"
+                style={{ ...styles.card, "--from": TONES[i % 4][0], "--to": TONES[i % 4][1] }}
+                onClick={it.action}
+              >
                 <span className="service-icon" style={styles.icon}>{it.icon}</span>
                 <span style={styles.title}>{it.title}</span>
                 <span style={styles.text}>{it.text}</span>
@@ -84,16 +95,16 @@ function Services() {
 }
 
 const styles = {
-  section: { background: "#FAF7F1", padding: "24px 24px 72px" },
+  section: { background: "#FAF7F1", padding: "8px 24px 72px" },
   inner: { maxWidth: "1180px", margin: "0 auto" },
   heading: { fontFamily: "'Space Grotesk', sans-serif", fontSize: "clamp(26px, 4vw, 34px)", color: "#16241A", fontWeight: "700", letterSpacing: "-0.5px", marginBottom: "6px" },
   sub: { color: "#5B6B60", fontSize: "15px", marginBottom: "32px" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "18px" },
   card: { position: "relative", overflow: "hidden", width: "100%", height: "100%", textAlign: "left", background: "#FFFFFF", border: "1px solid #EFEDE5", borderRadius: "16px", padding: "24px", display: "flex", flexDirection: "column", gap: "10px", cursor: "pointer", fontFamily: "inherit" },
-  icon: { width: "52px", height: "52px", borderRadius: "14px", background: "#E4ECE0", color: "#24512F", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "6px" },
+  icon: { width: "52px", height: "52px", borderRadius: "14px", background: "linear-gradient(135deg, var(--from), var(--to))", color: "#FFFFFF", boxShadow: "0 10px 20px -10px var(--from)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "6px" },
   title: { fontFamily: "'Space Grotesk', sans-serif", fontSize: "18px", fontWeight: "700", color: "#16241A" },
   text: { fontSize: "14px", color: "#5B6B60", lineHeight: "1.55", flex: 1 },
-  arrow: { fontSize: "13px", fontWeight: "700", color: "#24512F", marginTop: "6px" },
+  arrow: { fontSize: "13px", fontWeight: "700", color: "var(--from)", marginTop: "6px" },
 };
 
 export default Services;
