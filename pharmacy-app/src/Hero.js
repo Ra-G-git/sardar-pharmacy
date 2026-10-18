@@ -28,46 +28,30 @@ const PinIcon = () => (<svg {...svgProps}><path d="M12 21s7-6.200 7-11a7 7 0 10-
 const PhoneIcon = () => (<svg {...svgProps}><path d="M5 4h4l2 5-2.500 1.500a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z" /></svg>);
 const ClockIcon = () => (<svg {...svgProps}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>);
 
-// Animated logo: the SP mark with a capsule that tumbles in, lands on it,
-// floats for a while, then tumbles out and does it again.
+// Hero animation: starts with just the capsule, which tumbles through a few
+// poses, then the SP logo appears and the capsule shrinks away into its plus.
+// Click / tap (or Enter) replays it.
 function LogoStage() {
+  const [run, setRun] = useState(0);
   return (
-    <div className="logo-stage" aria-label="Sardar Pharmacy logo">
-      <span className="logo-glow" aria-hidden="true" />
-      <span className="logo-pulse" aria-hidden="true" />
-      <span className="logo-spark s1" aria-hidden="true" />
-      <span className="logo-spark s2" aria-hidden="true" />
-      <span className="logo-spark s3" aria-hidden="true" />
-      <div className="logo-box">
-        <img className="logo-img" src="/sp-logo.webp" alt="Sardar Pharmacy" />
-        <div className="logo-pill">
-          <svg viewBox="0 0 200 100" aria-hidden="true">
-            <defs>
-              <clipPath id="pillClip"><rect width="200" height="100" rx="50" /></clipPath>
-              <linearGradient id="pillGreen" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="#7FD27A" />
-                <stop offset="0.45" stopColor="#2FA52F" />
-                <stop offset="1" stopColor="#1F7F25" />
-              </linearGradient>
-              <linearGradient id="pillBlue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="#5AA2E6" />
-                <stop offset="0.45" stopColor="#1F6BB8" />
-                <stop offset="1" stopColor="#154E92" />
-              </linearGradient>
-              <radialGradient id="pillShine" cx="0.3" cy="0.25" r="0.6">
-                <stop offset="0" stopColor="#fff" stopOpacity="0.55" />
-                <stop offset="1" stopColor="#fff" stopOpacity="0" />
-              </radialGradient>
-            </defs>
-            <g clipPath="url(#pillClip)">
-              <rect x="0" y="0" width="99" height="100" fill="url(#pillGreen)" />
-              <rect x="101" y="0" width="99" height="100" fill="url(#pillBlue)" />
-              <rect x="98" y="0" width="4" height="100" fill="#0F3F7A" opacity="0.7" />
-              <ellipse cx="46" cy="30" rx="34" ry="20" fill="url(#pillShine)" />
-              <ellipse cx="150" cy="30" rx="34" ry="20" fill="url(#pillShine)" opacity="0.7" />
-              <rect x="0" y="78" width="200" height="22" fill="#000" opacity="0.08" />
-            </g>
-          </svg>
+    <div
+      className="logo-stage"
+      role="button"
+      tabIndex={0}
+      aria-label="Sardar Pharmacy logo — press to replay the animation"
+      onClick={() => setRun((r) => r + 1)}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setRun((r) => r + 1); } }}
+    >
+      <div className="logo-box" key={run}>
+        <span className="logo-pulse" aria-hidden="true" />
+        <span className="logo-spark s1" aria-hidden="true" />
+        <span className="logo-spark s2" aria-hidden="true" />
+        <span className="logo-spark s3" aria-hidden="true" />
+        <div className="logo-float">
+          <img className="logo-img" src="/sp-logo.webp" alt="Sardar Pharmacy" />
+        </div>
+        <div className="pill-pos" aria-hidden="true">
+          <img className="pill-anim" src="/sp-pill.webp" alt="" />
         </div>
       </div>
     </div>

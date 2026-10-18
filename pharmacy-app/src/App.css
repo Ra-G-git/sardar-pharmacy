@@ -585,61 +585,88 @@ a:focus-visible {
 
 @media (max-width: 900px) { .hero2-plus.p1, .hero2-plus.p2 { display: none; } }
 
-/* ── Animated logo stage ────────────────────────────────────────────── */
-.logo-stage {
-  position: absolute; left: 6%; right: 6%; top: 8%; bottom: 8%;
-  background: linear-gradient(160deg, #FFFFFF 0%, #F3F8F1 100%);
-  border-radius: 44px; overflow: hidden; display: grid; place-items: center;
-  box-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.6);
-  animation: logoStageIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+/* ── Hero: light theme so the transparent logo reads clearly ───────── */
+.hero2 {
+  color: #16241A;
+  background:
+    radial-gradient(760px 420px at 92% 0%, rgba(232, 163, 61, 0.22), transparent 62%),
+    radial-gradient(700px 460px at 62% 105%, rgba(42, 145, 153, 0.18), transparent 62%),
+    radial-gradient(640px 420px at -6% 100%, rgba(29, 166, 107, 0.20), transparent 62%),
+    linear-gradient(160deg, #F7FBF4 0%, #EAF5EC 100%);
 }
-@keyframes logoStageIn { from { opacity: 0; transform: scale(0.9) translateY(14px); } to { opacity: 1; transform: none; } }
-.logo-glow {
-  position: absolute; width: 90%; aspect-ratio: 1; border-radius: 50%; left: 5%; top: 8%;
-  background: radial-gradient(circle, rgba(94, 170, 112, 0.22), transparent 65%);
+.hero2::before { background-image: radial-gradient(rgba(36, 81, 47, 0.45) 1px, transparent 1.4px); opacity: 0.16; }
+.hero2-plus { opacity: 0.22; }
+.hero2-plus::before, .hero2-plus::after { background: #24512F; }
+.hero2-pill { background: #fff; border-color: #D9E7D6; color: #24512F; box-shadow: 0 8px 20px -12px rgba(22, 36, 26, 0.4); backdrop-filter: none; }
+.hero2-pill i { background: #1DA66B; box-shadow: 0 0 0 4px rgba(29, 166, 107, 0.25); }
+.hero2-title { color: #16241A; }
+.hero2-accent { background: linear-gradient(100deg, #1DA66B, #15808F 70%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.hero2-sub { color: #4A5B50; }
+.hero2-btn.ghost { background: #fff; color: #24512F; border-color: #24512F; }
+.hero2-btn.ghost:hover { background: #E4ECE0; }
+.hero2-info span { background: #fff; border-color: #D9E7D6; color: #33473A; }
+.hero2-info svg { color: #1DA66B; }
+.hero2-ring { border-color: rgba(36, 81, 47, 0.22); }
+.hero2-chip { box-shadow: 0 14px 30px -12px rgba(22, 36, 26, 0.35); border: 1px solid #E6EEE3; }
+
+/* ── Capsule → logo animation (transparent stage) ───────────────────── */
+.logo-stage {
+  position: absolute; inset: 4% 2%; display: grid; place-items: center; cursor: pointer;
+  background: none; outline-offset: 6px; -webkit-tap-highlight-color: transparent;
+}
+.logo-box { position: relative; width: 100%; max-width: 470px; aspect-ratio: 2435 / 1917; }
+.logo-float { position: absolute; inset: 0; animation: logoIdle 6s ease-in-out 5s infinite; }
+.logo-img {
+  display: block; width: 100%; height: 100%; opacity: 0;
+  filter: drop-shadow(0 18px 22px rgba(20, 70, 50, 0.22));
+  animation: logoReveal 1.1s cubic-bezier(0.22, 1, 0.36, 1) 3.3s forwards;
+}
+@keyframes logoReveal {
+  from { opacity: 0; transform: scale(0.82); filter: blur(8px) drop-shadow(0 0 0 rgba(0,0,0,0)); }
+  to   { opacity: 1; transform: none; filter: blur(0) drop-shadow(0 18px 22px rgba(20, 70, 50, 0.22)); }
+}
+@keyframes logoIdle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+/* capsule: starts alone in the middle, tumbles, then shrinks into the plus */
+.pill-pos { position: absolute; left: 50%; top: 49%; width: 66%; transform: translate(-50%, -50%); perspective: 900px; pointer-events: none; }
+.pill-anim {
+  display: block; width: 100%; height: auto; opacity: 0; transform-origin: 50% 50%;
+  filter: drop-shadow(0 18px 18px rgba(10, 50, 40, 0.3));
+  animation: pillStory 5.6s cubic-bezier(0.45, 0.05, 0.3, 1) 0.1s forwards;
+}
+@keyframes pillStory {
+  0%   { opacity: 0; transform: scale(0.55) rotate(-24deg); }
+  9%   { opacity: 1; transform: scale(1) rotate(0deg); }
+  24%  { opacity: 1; transform: translateY(-4%) scale(1.02) rotate(0deg); }
+  /* tumble: vertical → tilted & flipped → vertical → back */
+  32%  { transform: scale(0.98) rotate(90deg); }
+  41%  { transform: scale(1) rotateY(180deg) rotate(38deg); }
+  50%  { transform: scale(0.98) rotateY(180deg) rotate(-90deg); }
+  58%  { transform: scale(1.03) rotateY(360deg) rotate(0deg); }
+  /* hand over to the logo, then vanish into the plus */
+  66%  { opacity: 1; transform: scale(0.8); }
+  80%  { opacity: 0.9; transform: scale(0.14) rotate(180deg); }
+  88%  { opacity: 0; transform: scale(0.02) rotate(240deg); }
+  100% { opacity: 0; transform: scale(0.02) rotate(240deg); }
 }
 .logo-pulse {
-  position: absolute; width: 70%; aspect-ratio: 1; border-radius: 50%; left: 15%; top: 15%;
-  border: 3px solid rgba(47, 165, 47, 0.45); opacity: 0;
-  animation: landPulse 9s ease-out 0.6s infinite;
+  position: absolute; left: 50%; top: 49%; width: 22%; aspect-ratio: 1; border-radius: 50%;
+  border: 3px solid rgba(29, 166, 107, 0.55); opacity: 0; transform: translate(-50%, -50%) scale(0.4);
+  animation: revealPulse 1.4s ease-out 3.7s forwards;
 }
-@keyframes landPulse {
-  0%, 14% { opacity: 0; transform: scale(0.55); }
-  16% { opacity: 0.7; }
-  32% { opacity: 0; transform: scale(1.3); }
-  100% { opacity: 0; transform: scale(1.3); }
+@keyframes revealPulse { 0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.4); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(5); } }
+.logo-spark {
+  position: absolute; width: 16px; height: 16px; background: #E8A33D; opacity: 0;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: twinkle 3.2s ease-in-out 4.4s infinite;
 }
-.logo-box { position: relative; width: 78%; aspect-ratio: 2435 / 1917; }
-.logo-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; animation: logoImgIn 1s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both; }
-@keyframes logoImgIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: none; } }
-/* the capsule sits where it lands on the mark: over the two upper bowls */
-.logo-pill {
-  position: absolute; left: 14.2%; top: 7.3%; width: 72.4%; aspect-ratio: 2 / 1;
-  filter: drop-shadow(0 10px 12px rgba(10, 40, 20, 0.35));
-  transform-origin: 50% 50%; opacity: 0;
-  animation: pillCycle 9s cubic-bezier(0.3, 0.7, 0.4, 1) 0.6s infinite;
-}
-.logo-pill svg { display: block; width: 100%; height: 100%; }
-@keyframes pillCycle {
-  0%   { opacity: 0; transform: translateY(-210%) rotate(-540deg) scale(0.9); }
-  3%   { opacity: 1; }
-  14%  { opacity: 1; transform: translateY(5%) rotate(10deg) scale(1.03, 0.95); }
-  17%  { transform: translateY(-3%) rotate(-3deg) scale(0.99, 1.02); }
-  20%  { transform: none; }
-  40%  { transform: translateY(-3%) rotate(1.2deg); }
-  60%  { transform: translateY(0) rotate(-1deg); }
-  78%  { opacity: 1; transform: none; }
-  88%  { opacity: 0; transform: translateY(-210%) rotate(540deg) scale(0.9); }
-  100% { opacity: 0; transform: translateY(-210%) rotate(540deg) scale(0.9); }
-}
-.logo-spark { position: absolute; width: 16px; height: 16px; background: #E8A33D; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: twinkle 3.2s ease-in-out infinite; }
-.logo-spark.s1 { left: 12%; top: 14%; }
-.logo-spark.s2 { right: 10%; top: 22%; width: 11px; height: 11px; animation-delay: -1.2s; }
-.logo-spark.s3 { right: 16%; bottom: 14%; width: 13px; height: 13px; animation-delay: -2.2s; }
-@keyframes twinkle { 0%, 100% { opacity: 0.2; transform: scale(0.6) rotate(0); } 50% { opacity: 1; transform: scale(1.1) rotate(45deg); } }
-@media (max-width: 900px) { .logo-stage { border-radius: 32px; } }
+.logo-spark.s1 { left: 2%; top: 10%; }
+.logo-spark.s2 { right: 0; top: 24%; width: 11px; height: 11px; animation-delay: 5.4s; }
+.logo-spark.s3 { right: 8%; bottom: 8%; width: 13px; height: 13px; animation-delay: 6.2s; }
+@keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(0.5) rotate(0); } 50% { opacity: 1; transform: scale(1.1) rotate(45deg); } }
+
 @media (prefers-reduced-motion: reduce) {
-  .logo-stage, .logo-img { animation: none; }
-  .logo-pill { animation: none; opacity: 1; }
-  .logo-pulse, .logo-spark { animation: none; opacity: 0; }
+  .logo-img { animation: none; opacity: 1; }
+  .logo-float, .pill-anim, .logo-pulse, .logo-spark { animation: none; }
+  .pill-anim, .logo-pulse, .logo-spark { opacity: 0; }
 }
