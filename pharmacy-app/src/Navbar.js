@@ -57,7 +57,7 @@ function Navbar() {
           boxShadow: scrolled ? "0 4px 20px rgba(0,0,0,0.15)" : "none",
         }}>
           <div style={styles.logoSection}>
-            <img src="/logo.svg" alt="Sardar Pharmacy" style={styles.logoImg} />
+            <img src="/sp-logo-small.webp" alt="Sardar Pharmacy" style={styles.logoImg} />
             <div>
               <h2 style={styles.logoText}>Sardar Pharmacy</h2>
               <p style={styles.logoSub}>Mirpur, Dhaka</p>

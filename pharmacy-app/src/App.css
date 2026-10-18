@@ -584,3 +584,62 @@ a:focus-visible {
 .service-card:hover .service-icon { background: linear-gradient(135deg, var(--from), var(--to)) !important; color: #fff !important; }
 
 @media (max-width: 900px) { .hero2-plus.p1, .hero2-plus.p2 { display: none; } }
+
+/* ── Animated logo stage ────────────────────────────────────────────── */
+.logo-stage {
+  position: absolute; left: 6%; right: 6%; top: 8%; bottom: 8%;
+  background: linear-gradient(160deg, #FFFFFF 0%, #F3F8F1 100%);
+  border-radius: 44px; overflow: hidden; display: grid; place-items: center;
+  box-shadow: 0 30px 60px -24px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.6);
+  animation: logoStageIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes logoStageIn { from { opacity: 0; transform: scale(0.9) translateY(14px); } to { opacity: 1; transform: none; } }
+.logo-glow {
+  position: absolute; width: 90%; aspect-ratio: 1; border-radius: 50%; left: 5%; top: 8%;
+  background: radial-gradient(circle, rgba(94, 170, 112, 0.22), transparent 65%);
+}
+.logo-pulse {
+  position: absolute; width: 70%; aspect-ratio: 1; border-radius: 50%; left: 15%; top: 15%;
+  border: 3px solid rgba(47, 165, 47, 0.45); opacity: 0;
+  animation: landPulse 9s ease-out 0.6s infinite;
+}
+@keyframes landPulse {
+  0%, 14% { opacity: 0; transform: scale(0.55); }
+  16% { opacity: 0.7; }
+  32% { opacity: 0; transform: scale(1.3); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+.logo-box { position: relative; width: 78%; aspect-ratio: 2435 / 1917; }
+.logo-img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; animation: logoImgIn 1s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both; }
+@keyframes logoImgIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: none; } }
+/* the capsule sits where it lands on the mark: over the two upper bowls */
+.logo-pill {
+  position: absolute; left: 14.2%; top: 7.3%; width: 72.4%; aspect-ratio: 2 / 1;
+  filter: drop-shadow(0 10px 12px rgba(10, 40, 20, 0.35));
+  transform-origin: 50% 50%; opacity: 0;
+  animation: pillCycle 9s cubic-bezier(0.3, 0.7, 0.4, 1) 0.6s infinite;
+}
+.logo-pill svg { display: block; width: 100%; height: 100%; }
+@keyframes pillCycle {
+  0%   { opacity: 0; transform: translateY(-210%) rotate(-540deg) scale(0.9); }
+  3%   { opacity: 1; }
+  14%  { opacity: 1; transform: translateY(5%) rotate(10deg) scale(1.03, 0.95); }
+  17%  { transform: translateY(-3%) rotate(-3deg) scale(0.99, 1.02); }
+  20%  { transform: none; }
+  40%  { transform: translateY(-3%) rotate(1.2deg); }
+  60%  { transform: translateY(0) rotate(-1deg); }
+  78%  { opacity: 1; transform: none; }
+  88%  { opacity: 0; transform: translateY(-210%) rotate(540deg) scale(0.9); }
+  100% { opacity: 0; transform: translateY(-210%) rotate(540deg) scale(0.9); }
+}
+.logo-spark { position: absolute; width: 16px; height: 16px; background: #E8A33D; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: twinkle 3.2s ease-in-out infinite; }
+.logo-spark.s1 { left: 12%; top: 14%; }
+.logo-spark.s2 { right: 10%; top: 22%; width: 11px; height: 11px; animation-delay: -1.2s; }
+.logo-spark.s3 { right: 16%; bottom: 14%; width: 13px; height: 13px; animation-delay: -2.2s; }
+@keyframes twinkle { 0%, 100% { opacity: 0.2; transform: scale(0.6) rotate(0); } 50% { opacity: 1; transform: scale(1.1) rotate(45deg); } }
+@media (max-width: 900px) { .logo-stage { border-radius: 32px; } }
+@media (prefers-reduced-motion: reduce) {
+  .logo-stage, .logo-img { animation: none; }
+  .logo-pill { animation: none; opacity: 1; }
+  .logo-pulse, .logo-spark { animation: none; opacity: 0; }
+}

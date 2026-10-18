@@ -43,7 +43,7 @@ function App() {
           <div style={styles.contactInner}>
             <Reveal>
             <div style={styles.contactHead}>
-              <img src="/logo.svg" alt="Sardar Pharmacy" style={styles.contactLogo} />
+              <img src="/sp-logo-small.webp" alt="Sardar Pharmacy" style={styles.contactLogo} />
               <div>
                 <h2 style={styles.contactTitle}>Sardar Pharmacy</h2>
                 <p style={styles.contactTag}>Caring for Mirpur's health, beyond the counter</p>

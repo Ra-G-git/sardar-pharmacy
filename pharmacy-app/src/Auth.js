@@ -107,7 +107,7 @@ function Auth({ onClose }) {
     <div style={styles.overlay}>
       <div style={styles.box}>
         <div style={styles.header}>
-          <img src="/logo.svg" alt="Sardar Pharmacy" style={styles.headerLogo} />
+          <img src="/sp-logo-small.webp" alt="Sardar Pharmacy" style={styles.headerLogo} />
           <h2 style={styles.title}>
             {isLogin ? "Welcome Back!" : "Create Account"}
           </h2>
