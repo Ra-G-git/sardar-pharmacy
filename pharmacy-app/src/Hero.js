@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { LOGO, BRAND_NAME } from "./brand";
 
 function useCountUp(target, duration = 1600, startDelay = 500) {
   const [value, setValue] = useState(0);
@@ -28,9 +29,34 @@ const PinIcon = () => (<svg {...svgProps}><path d="M12 21s7-6.200 7-11a7 7 0 10-
 const PhoneIcon = () => (<svg {...svgProps}><path d="M5 4h4l2 5-2.500 1.500a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z" /></svg>);
 const ClockIcon = () => (<svg {...svgProps}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>);
 
-// Hero animation: starts with just the capsule, which tumbles through a few
-// poses, then the SP logo appears and the capsule shrinks away into its plus.
-// Click / tap (or Enter) replays it.
+// Capsule in the logo colours (blue + red, with the same white gap and gloss).
+function Capsule() {
+  return (
+    <svg className="pill-svg" viewBox="0 0 300 120" aria-hidden="true">
+      <defs>
+        <linearGradient id="spBlue" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#2B6FDB" /><stop offset=".45" stopColor="#0E4FB8" /><stop offset="1" stopColor="#06277A" />
+        </linearGradient>
+        <linearGradient id="spRed" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#E0182F" /><stop offset=".45" stopColor="#B00020" /><stop offset="1" stopColor="#6A000F" />
+        </linearGradient>
+        <clipPath id="spPillClip"><rect x="4" y="4" width="292" height="112" rx="56" /></clipPath>
+      </defs>
+      <g clipPath="url(#spPillClip)">
+        <rect x="0" y="0" width="150" height="120" fill="url(#spBlue)" />
+        <rect x="150" y="0" width="150" height="120" fill="url(#spRed)" />
+        <rect x="146" y="0" width="8" height="120" fill="#fff" />
+        <rect x="18" y="12" width="118" height="16" rx="8" fill="#fff" opacity=".28" />
+        <rect x="164" y="12" width="118" height="16" rx="8" fill="#fff" opacity=".22" />
+        <rect x="0" y="86" width="300" height="34" fill="#000" opacity=".12" />
+      </g>
+    </svg>
+  );
+}
+
+// Hero animation: the capsule is alone, rotates up in ONE continuous motion
+// onto the logo while the logo fades in underneath, then the capsule melts
+// away. Click / tap (or Enter) replays it.
 function LogoStage() {
   const [run, setRun] = useState(0);
   return (
@@ -38,7 +64,7 @@ function LogoStage() {
       className="logo-stage"
       role="button"
       tabIndex={0}
-      aria-label="Sardar Pharmacy logo — press to replay the animation"
+      aria-label={BRAND_NAME + " logo — press to replay the animation"}
       onClick={() => setRun((r) => r + 1)}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setRun((r) => r + 1); } }}
     >
@@ -48,10 +74,12 @@ function LogoStage() {
         <span className="logo-spark s2" aria-hidden="true" />
         <span className="logo-spark s3" aria-hidden="true" />
         <div className="logo-float">
-          <img className="logo-img" src="/sp-logo.webp" alt="Sardar Pharmacy" />
+          <img className="logo-img" src={LOGO} alt={BRAND_NAME} />
         </div>
         <div className="pill-pos" aria-hidden="true">
-          <img className="pill-anim" src="/sp-pill.webp" alt="" />
+          <div className="pill-move">
+            <div className="pill-fade"><Capsule /></div>
+          </div>
         </div>
       </div>
     </div>

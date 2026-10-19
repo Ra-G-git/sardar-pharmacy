@@ -610,65 +610,67 @@ a:focus-visible {
 .hero2-chip { box-shadow: 0 14px 30px -12px rgba(22, 36, 26, 0.35); border: 1px solid #E6EEE3; }
 
 /* ── Capsule → logo animation (transparent stage) ───────────────────── */
+/* Timeline (one smooth motion, no pauses):
+   0.0s capsule fades in at the centre while already moving
+   0.0–2.6s ONE ease-in-out move: rises + rotates one full turn onto the logo
+   1.5–2.7s logo fades in underneath
+   2.3–3.1s capsule melts away                                            */
 .logo-stage {
   position: absolute; inset: 4% 2%; display: grid; place-items: center; cursor: pointer;
   background: none; outline-offset: 6px; -webkit-tap-highlight-color: transparent;
 }
-.logo-box { position: relative; width: 100%; max-width: 470px; aspect-ratio: 2435 / 1917; }
-.logo-float { position: absolute; inset: 0; animation: logoIdle 6s ease-in-out 6s infinite; }
+.logo-box { position: relative; width: 100%; max-width: 500px; aspect-ratio: 5492 / 3875; }
+.logo-float { position: absolute; inset: 0; animation: logoIdle 6s ease-in-out 3.6s infinite; }
 .logo-img {
   display: block; width: 100%; height: 100%; opacity: 0;
-  filter: drop-shadow(0 18px 22px rgba(20, 70, 50, 0.22));
-  animation: logoReveal 1.2s cubic-bezier(0.22, 1, 0.36, 1) 2.5s forwards;
+  filter: drop-shadow(0 18px 22px rgba(10, 40, 100, 0.2));
+  animation: logoReveal 1.2s cubic-bezier(0.22, 1, 0.36, 1) 1.5s forwards;
 }
 @keyframes logoReveal {
-  from { opacity: 0; transform: scale(0.82); filter: blur(8px) drop-shadow(0 0 0 rgba(0,0,0,0)); }
-  to   { opacity: 1; transform: none; filter: blur(0) drop-shadow(0 18px 22px rgba(20, 70, 50, 0.22)); }
+  from { opacity: 0; transform: scale(0.88); filter: blur(6px) drop-shadow(0 0 0 rgba(0,0,0,0)); }
+  to   { opacity: 1; transform: none; filter: blur(0) drop-shadow(0 18px 22px rgba(10, 40, 100, 0.2)); }
 }
 @keyframes logoIdle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 
-/* capsule: starts alone in the middle, tumbles, then shrinks into the plus */
-.pill-pos { position: absolute; left: 50%; top: 49%; width: 66%; transform: translate(-50%, -50%); perspective: 900px; pointer-events: none; }
-.pill-anim {
-  display: block; width: 100%; height: auto; opacity: 0; transform-origin: 50% 50%;
-  filter: drop-shadow(0 18px 18px rgba(10, 50, 40, 0.3));
-  animation: pillStory 6.6s cubic-bezier(0.45, 0.05, 0.3, 1) 0.1s forwards;
+.pill-pos { position: absolute; left: 50%; top: 50%; width: 62%; transform: translate(-50%, -50%); pointer-events: none; }
+.pill-move {
+  /* only two keyframes + one easing = one unbroken motion */
+  animation: pillMove 2.6s cubic-bezier(0.55, 0, 0.25, 1) 0s both;
 }
-@keyframes pillStory {
-  0%   { opacity: 0; transform: translateY(0) scale(0.55) rotate(-24deg); }
-  8%   { opacity: 1; transform: translateY(0) scale(1.1) rotate(0deg); }
-  /* alone in the middle for a moment */
-  22%  { opacity: 1; transform: translateY(-3%) scale(1.1) rotate(0deg); }
-  /* one full 2D rotation while it travels up onto the logo (no flipping) */
-  34%  { transform: translateY(-14%) scale(1.06) rotate(-90deg); }
-  44%  { transform: translateY(-30%) scale(1.02) rotate(-200deg); }
-  54%  { transform: translateY(-47%) scale(1) rotate(-325deg); }
-  59%  { transform: translateY(-53%) scale(1.04, 0.95) rotate(-362deg); }
-  62%  { transform: translateY(-51%) scale(0.99, 1.02) rotate(-358deg); }
-  65%  { transform: translateY(-52%) scale(1) rotate(-360deg); }
-  /* sits on top of the logo, then vanishes */
-  80%  { opacity: 1; transform: translateY(-52%) scale(1) rotate(-360deg); }
-  88%  { opacity: 0; transform: translateY(-56%) scale(0.9) rotate(-360deg); }
-  100% { opacity: 0; transform: translateY(-56%) scale(0.9) rotate(-360deg); }
+@keyframes pillMove {
+  from { transform: translateY(8%) rotate(0deg) scale(0.9); }
+  to   { transform: translateY(-62%) rotate(-360deg) scale(1); }
 }
+.pill-fade {
+  opacity: 0; transform-origin: 50% 50%;
+  filter: drop-shadow(0 16px 16px rgba(10, 30, 90, 0.3));
+  animation: pillFade 3.1s linear 0s both;
+}
+@keyframes pillFade {
+  0%   { opacity: 0; }
+  14%  { opacity: 1; }
+  74%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.8); }
+}
+.pill-svg { display: block; width: 100%; height: auto; }
 .logo-pulse {
   position: absolute; left: 50%; top: 30%; width: 22%; aspect-ratio: 1; border-radius: 50%;
-  border: 3px solid rgba(29, 166, 107, 0.55); opacity: 0; transform: translate(-50%, -50%) scale(0.4);
-  animation: revealPulse 1.4s ease-out 3.95s forwards;
+  border: 3px solid rgba(21, 90, 200, 0.5); opacity: 0; transform: translate(-50%, -50%) scale(0.4);
+  animation: revealPulse 1.4s ease-out 2.3s forwards;
 }
 @keyframes revealPulse { 0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.4); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(5); } }
 .logo-spark {
-  position: absolute; width: 16px; height: 16px; background: #E8A33D; opacity: 0;
+  position: absolute; width: 16px; height: 16px; background: #3FB871; opacity: 0;
   clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
-  animation: twinkle 3.2s ease-in-out 5.2s infinite;
+  animation: twinkle 3.2s ease-in-out 3.2s infinite;
 }
 .logo-spark.s1 { left: 2%; top: 10%; }
-.logo-spark.s2 { right: 0; top: 24%; width: 11px; height: 11px; animation-delay: 6.2s; }
-.logo-spark.s3 { right: 8%; bottom: 8%; width: 13px; height: 13px; animation-delay: 7s; }
+.logo-spark.s2 { right: 0; top: 24%; width: 11px; height: 11px; animation-delay: 4.2s; }
+.logo-spark.s3 { right: 8%; bottom: 8%; width: 13px; height: 13px; animation-delay: 5s; }
 @keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(0.5) rotate(0); } 50% { opacity: 1; transform: scale(1.1) rotate(45deg); } }
 
 @media (prefers-reduced-motion: reduce) {
   .logo-img { animation: none; opacity: 1; }
-  .logo-float, .pill-anim, .logo-pulse, .logo-spark { animation: none; }
-  .pill-anim, .logo-pulse, .logo-spark { opacity: 0; }
+  .logo-float, .pill-move, .pill-fade, .logo-pulse, .logo-spark { animation: none; }
+  .pill-pos, .logo-pulse, .logo-spark { display: none; }
 }

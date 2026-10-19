@@ -3,6 +3,7 @@ import { useCart } from "./CartContext";
 import { auth } from "./firebase";
 import { signOut } from "firebase/auth";
 import Cart from "./Cart";
+import Logo from "./Logo";
 import Auth from "./Auth";
 import MyOrders from "./MyOrders";
 import PrescriptionUpload from "./PrescriptionUpload";
@@ -57,7 +58,7 @@ function Navbar() {
           boxShadow: scrolled ? "0 4px 20px rgba(0,0,0,0.15)" : "none",
         }}>
           <div style={styles.logoSection}>
-            <img src="/sp-logo-small.webp" alt="Sardar Pharmacy" style={styles.logoImg} />
+            <Logo plate style={styles.logoImg} />
             <div>
               <h2 style={styles.logoText}>Sardar Pharmacy</h2>
               <p style={styles.logoSub}>Mirpur, Dhaka</p>

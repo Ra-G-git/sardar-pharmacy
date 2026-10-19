@@ -161,7 +161,7 @@ const SETTINGS_DEFAULTS = {
   store_address: '10/1, Pallabi, Dhaka-1216',
   store_phone: '01559084327',
   store_website: 'https://sardar-pharmacy.vercel.app',
-  invoice_logo: '/logo.svg',
+  invoice_logo: '/sp-logo.webp',
 };
 
 function withTimeout(promise, ms, label) {

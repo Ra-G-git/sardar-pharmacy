@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Logo from "./Logo";
 import { auth, db } from "./firebase";
 import {
   createUserWithEmailAndPassword,
@@ -107,7 +108,7 @@ function Auth({ onClose }) {
     <div style={styles.overlay}>
       <div style={styles.box}>
         <div style={styles.header}>
-          <img src="/sp-logo-small.webp" alt="Sardar Pharmacy" style={styles.headerLogo} />
+          <Logo plate style={styles.headerLogo} />
           <h2 style={styles.title}>
             {isLogin ? "Welcome Back!" : "Create Account"}
           </h2>

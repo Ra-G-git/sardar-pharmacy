@@ -4,6 +4,7 @@ import MedicineList from "./MedicineList";
 import { CartProvider } from "./CartContext";
 import Services from "./Services";
 import Reveal from "./Reveal";
+import Logo from "./Logo";
 import { useEffect, useState } from "react";
 import "./App.css";
 
@@ -43,7 +44,7 @@ function App() {
           <div style={styles.contactInner}>
             <Reveal>
             <div style={styles.contactHead}>
-              <img src="/sp-logo-small.webp" alt="Sardar Pharmacy" style={styles.contactLogo} />
+              <Logo plate style={styles.contactLogo} />
               <div>
                 <h2 style={styles.contactTitle}>Sardar Pharmacy</h2>
                 <p style={styles.contactTag}>Caring for Mirpur's health, beyond the counter</p>
