@@ -80,7 +80,6 @@ function CategoryTiles({ categories, onPick }) {
               <span className="cat-tile-emoji" aria-hidden="true"><CategoryIcon name={c.icon} size={26} /></span>
               <span className="cat-tile-text">
                 <span className="cat-tile-name">{c.name}</span>
-                <span className="cat-tile-count">{c.count.toLocaleString()} listed</span>
               </span>
               <span className="cat-tile-go" aria-hidden="true">→</span>
             </button>
@@ -239,7 +238,6 @@ function Discover({ decorate, onCardClick, addToCart, getCartItem }) {
             >
               <CategoryIcon name={c.icon} size={16} />
               {c.name}
-              <span className="cat-count">{c.count.toLocaleString()}</span>
             </button>
           ))}
         </div>
@@ -259,7 +257,7 @@ function Discover({ decorate, onCardClick, addToCart, getCartItem }) {
             <div>
               <h3 style={styles.rowTitle}>{active}</h3>
               <p style={styles.rowNote}>
-                {browse.count.toLocaleString()} listed · a random selection — search above to find a specific medicine
+                A random selection — search above to find a specific medicine
               </p>
             </div>
             <div style={styles.rowActions}>
@@ -315,7 +313,6 @@ function Discover({ decorate, onCardClick, addToCart, getCartItem }) {
             <Reveal key={r.category}>
               <Row
                 title={r.category}
-                note={`${r.count.toLocaleString()} listed`}
                 items={decorate(r.results)}
                 onSeeAll={() => pick(r.category)}
                 cardProps={cardProps}

@@ -35,10 +35,10 @@ function Capsule() {
     <svg className="pill-svg" viewBox="0 0 300 120" aria-hidden="true">
       <defs>
         <linearGradient id="spBlue" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#2B6FDB" /><stop offset=".45" stopColor="#0E4FB8" /><stop offset="1" stopColor="#06277A" />
+          <stop offset="0" stopColor="#2E86FF" /><stop offset=".45" stopColor="#0A62F0" /><stop offset="1" stopColor="#0742B8" />
         </linearGradient>
         <linearGradient id="spRed" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#E0182F" /><stop offset=".45" stopColor="#B00020" /><stop offset="1" stopColor="#6A000F" />
+          <stop offset="0" stopColor="#FF3347" /><stop offset=".45" stopColor="#E4122B" /><stop offset="1" stopColor="#A30019" />
         </linearGradient>
         <clipPath id="spPillClip"><rect x="4" y="4" width="292" height="112" rx="56" /></clipPath>
       </defs>

@@ -108,7 +108,7 @@ function Auth({ onClose }) {
     <div style={styles.overlay}>
       <div style={styles.box}>
         <div style={styles.header}>
-          <Logo plate style={styles.headerLogo} />
+          <Logo style={styles.headerLogo} />
           <h2 style={styles.title}>
             {isLogin ? "Welcome Back!" : "Create Account"}
           </h2>

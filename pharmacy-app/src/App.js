@@ -44,7 +44,7 @@ function App() {
           <div style={styles.contactInner}>
             <Reveal>
             <div style={styles.contactHead}>
-              <Logo plate style={styles.contactLogo} />
+              <Logo style={styles.contactLogo} />
               <div>
                 <h2 style={styles.contactTitle}>Sardar Pharmacy</h2>
                 <p style={styles.contactTag}>Caring for Mirpur's health, beyond the counter</p>
