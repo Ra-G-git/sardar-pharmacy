@@ -18,6 +18,10 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
+// Uptime monitors (UptimeRobot etc.) ping these. They need no login and answer
+// 200, so the monitor shows "Up" and keeps the free Render instance awake.
+app.get(['/', '/health'], (req, res) => res.status(200).send('OK'));
+
 // Local dev only — on Vercel, /pos is served as static files directly (see
 // vercel.json) and this Express app only handles /api. Locally there's no
 // separate static server, so we serve it here too for `node server.js` testing.
